@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>16S vs WGS Report Interpretation Guide</title>
+  <style>
+    :root {
+      --bg: #f4f2ec;
+      --panel: #fffdf9;
+      --ink: #1f2933;
+      --muted: #5c6773;
+      --accent: #1f6f78;
+      --accent-soft: #dceff1;
+      --border: #d7d2c8;
+      --code: #f2efe7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #ece7dd 0%, var(--bg) 100%);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    h1, h2, h3 {
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      line-height: 1.2;
+      color: #172026;
+    }
+    h1 { font-size: 2.1rem; margin: 0 0 12px; }
+    h2 { font-size: 1.45rem; margin-top: 34px; border-top: 2px solid var(--border); padding-top: 20px; }
+    h3 { font-size: 1.1rem; margin-top: 24px; }
+    p, li { font-size: 1rem; }
+    .lede {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .callout {
+      background: var(--accent-soft);
+      border-left: 5px solid var(--accent);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin: 14px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: #efe8dc;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      font-size: 0.95rem;
+    }
+    code, pre {
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      background: var(--code);
+    }
+    code { padding: 0.12rem 0.34rem; border-radius: 6px; }
+    pre {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .small { font-size: 0.92rem; color: var(--muted); }
+    ul { padding-left: 20px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>16S vs WGS Report Interpretation Guide</h1>
+    <div class="lede">
+      <p>This guide helps you interpret overview reports comparing amplicon (16S) and shotgun (WGS) taxonomic profiles. It is intentionally general so you can reuse it across studies, taxonomic databases, and profiler combinations.</p>
+      <p class="small">Use with files like <code>genus_page_*.pdf</code> plus the matching <code>combined_stats*.tsv</code>.</p>
+    </div>
+
+    <h2>1. Quick Reading Order</h2>
+    <ol>
+      <li>Check sample coverage and depth balance first (<code>Mapping.csv</code> context).</li>
+      <li>Read taxon-level agreement (LFC scatter + enriched taxa lists).</li>
+      <li>Read sample-level agreement (Spearman, Pearson, L1).</li>
+      <li>Read diversity agreement (Shannon and richness bias/RMSE).</li>
+      <li>Read ordination and PERMANOVA to test global method effects.</li>
+      <li>Conclude with practical impact: are differences small enough for your downstream question?</li>
+    </ol>
+
+    <h2>2. What Each Panel Means</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>LFC / Abundance Panel</h3>
+        <p>Shows whether taxa are consistently enriched in 16S or WGS. Systematic shifts suggest method bias, not random noise.</p>
+      </div>
+      <div class="card">
+        <h3>Top Enriched Taxa Lists</h3>
+        <p>Highlights taxa driving disagreement. Use this to identify biologically meaningful or known-artefact taxa.</p>
+      </div>
+      <div class="card">
+        <h3>Diversity Panels</h3>
+        <p>Shannon reflects evenness + richness; richness reflects count of detected taxa. Bias indicates directional method differences.</p>
+      </div>
+      <div class="card">
+        <h3>Shared Taxa / Agreement</h3>
+        <p>Shared taxa fraction and correlation/distance metrics summarize sample-level alignment between approaches.</p>
+      </div>
+      <div class="card">
+        <h3>Paired PCoA + PERMANOVA</h3>
+        <p>Tests if method identity explains global composition differences after pairing by sample.</p>
+      </div>
+    </div>
+
+    <h2>3. Metric Interpretation Heuristics</h2>
+    <table>
+      <thead>
+        <tr><th>Metric</th><th>High-Level Interpretation</th><th>Rule of Thumb</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Spearman</code></td>
+          <td>Rank-order agreement of taxa abundance between methods.</td>
+          <td>&gt;= 0.7 strong, 0.4-0.7 moderate, &lt; 0.4 weak.</td>
+        </tr>
+        <tr>
+          <td><code>Pearson</code></td>
+          <td>Linear abundance agreement; sensitive to dominant taxa.</td>
+          <td>Interpret with Spearman and L1 together.</td>
+        </tr>
+        <tr>
+          <td><code>L1</code></td>
+          <td>Total absolute abundance difference per sample.</td>
+          <td>Lower is better; compare across runs, not absolute universal cutoffs.</td>
+        </tr>
+        <tr>
+          <td><code>n_common_taxa</code>, <code>n_unique_*</code></td>
+          <td>Detection overlap versus method-specific detections.</td>
+          <td>Large unique sets can reflect depth/database/profiler differences.</td>
+        </tr>
+        <tr>
+          <td>Shannon bias / RMSE</td>
+          <td>Average and spread of diversity disagreement (16S - WGS).</td>
+          <td>Bias near 0 and low RMSE indicate better cross-method consistency.</td>
+        </tr>
+        <tr>
+          <td>Richness bias / RMSE</td>
+          <td>Difference in detected taxa counts.</td>
+          <td>Large absolute bias often signals detection-threshold effects.</td>
+        </tr>
+        <tr>
+          <td><code>PERMANOVA R²</code>, <code>p</code></td>
+          <td>Fraction of variance explained by method and significance.</td>
+          <td>Small but significant R² can still matter for biomarker studies.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. Decision Framework</h2>
+    <div class="callout">
+      <strong>Do not decide from one metric.</strong> Require consistency across taxon-level, diversity, and ordination evidence before concluding methods are interchangeable.
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Pattern</th><th>Likely Meaning</th><th>Recommended Action</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>High correlations + low L1 + low PERMANOVA R²</td>
+          <td>Methods are largely concordant for this dataset.</td>
+          <td>Proceed with integrated reporting at genus/family level.</td>
+        </tr>
+        <tr>
+          <td>Moderate correlations + directional LFC taxa</td>
+          <td>Systematic method bias in specific clades.</td>
+          <td>Report method-sensitive taxa explicitly; avoid over-interpreting them.</td>
+        </tr>
+        <tr>
+          <td>Strong richness bias but modest Shannon bias</td>
+          <td>Different detection limits, similar dominant-community structure.</td>
+          <td>Harmonize prevalence filters and re-check overlap metrics.</td>
+        </tr>
+        <tr>
+          <td>Significant PERMANOVA with non-trivial R²</td>
+          <td>Method choice changes multivariate conclusions.</td>
+          <td>Stratify analyses by method or include method as a covariate.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>5. Common Pitfalls</h2>
+    <ul>
+      <li>Comparing species-level outputs directly between 16S and WGS without validating classifier resolution.</li>
+      <li>Ignoring depth asymmetry in <code>Mapping.csv</code> when interpreting unique taxa.</li>
+      <li>Treating p-values as effect size. Always pair significance with R² and practical impact.</li>
+      <li>Concluding equivalence from diversity only. Taxon-level disagreement can still be large.</li>
+      <li>Assuming all disagreements are technical; true biological signal can interact with method bias.</li>
+    </ul>
+
+    <h2>6. Standard Reporting Template</h2>
+    <p>Use this paragraph skeleton for manuscripts, slide decks, or notes:</p>
+    <pre>At the [rank] level, 16S and WGS showed [strong/moderate/weak] agreement
+(Spearman = X, Pearson = Y, L1 = Z). Detection overlap was [high/moderate/low]
+(common taxa = A; unique WGS = B; unique 16S = C).
+
+Diversity agreement was [close/divergent] (Shannon bias = D, RMSE = E;
+richness bias = F, RMSE = G). Multivariate composition showed
+[no/some/clear] method effect (PERMANOVA R² = H, p = I).
+
+Interpretation: [1 sentence on whether methods are interchangeable for the specific use case].</pre>
+
+    <h2>7. Minimal QC Checklist</h2>
+    <ul>
+      <li>Same taxonomy release and rank harmonization across methods.</li>
+      <li>Paired sample IDs correctly matched across all files.</li>
+      <li>Reasonable sequencing-depth balance or depth-aware interpretation.</li>
+      <li>Documented thresholds: prevalence, abundance, pseudocount choices.</li>
+      <li>Method-sensitive taxa reviewed before final biological conclusions.</li>
+    </ul>
+
+    <h2>8. How To Reuse This Guide</h2>
+    <ul>
+      <li>Keep this HTML beside each generated PDF and stats TSV.</li>
+      <li>Duplicate it per project and edit only study-specific notes.</li>
+      <li>If your pipeline adds new metrics, extend Section 3 and the template text.</li>
+    </ul>
+
+    <p class="small">Last updated: 2026-03-24.</p>
+  </main>
+</body>
+</html>

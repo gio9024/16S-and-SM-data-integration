@@ -90,3 +90,9 @@ That roadmap includes:
 - Keep configuration files under version control.
 - Record software/database versions for every run.
 - Preserve portable report bundles (`html + assets + pdf + stats`) for sharing.
+
+## Results Interpretation Guide
+
+For step-by-step interpretation of the generated PDF reports, see:
+
+- [results_interpretation_guide.md](results_interpretation_guide.md)
