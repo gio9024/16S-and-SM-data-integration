@@ -9,90 +9,13 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 3. Generate interpretable summary reports for method benchmarking.
 4. Transition to a GTDB-centered integration workflow for improved harmonization.
 
-## Current Analysis Context
+## Pipeline Comparison
 
-The active comparison workflow uses three 16S-vs-WGS pipelines and produces:
+| Pipeline | 16S rRNA gene | | | Shotgun metagenomics | | |
+|----------|---------------|------|-----------|----------------------|------|-----------|
+| | **Database** | **Tool** | **Resources** | **Database** | **Tool** | **Resources** |
+| 1 | Greengenes2 | DADA2 | [Introducing Greengenes2](https://forum.qiime2.org/t/introducing-greengenes2-2022-10/25291), [biocore/q2-greengenes2](https://github.com/biocore/q2-greengenes2) | Greengenes2 | Woltka | [Introducing Greengenes2](https://forum.qiime2.org/t/introducing-greengenes2-2022-10/25291) |
+| 2 | 16S Refseq | DADA2 | | Refseq | Kraken2/Bracken (in MOSHPIT) | [sortmerna](https://github.com/sortmerna/sortmerna), [barrnap](https://github.com/tseemann/barrnap), [MOSHPIT docs](https://bokulich-lab.github.io/moshpit-docs/chapters/03_taxonomic_classification/reads.html) |
+| 3 | 16S Refseq | DADA2 | | 16S Refseq | SortMeRNA or Barrnap (Extract 16S), Kraken2/Bracken (in MOSHPIT) | [sortmerna](https://github.com/sortmerna/sortmerna), [barrnap](https://github.com/tseemann/barrnap), [MOSHPIT docs](https://bokulich-lab.github.io/moshpit-docs/chapters/03_taxonomic_classification/reads.html) |
 
-- per-pipeline overview PDFs
-- a combined comparison PDF
-- an interactive merged HTML report
-- a consolidated stats table (`combined_stats.tsv`)
 
-Core metrics used in interpretation:
-
-- **Spearman / Pearson**: cross-method concordance
-- **L1 distance**: magnitude of abundance disagreement
-- **Shared vs unique taxa** (`n_common_taxa`, `n_unique_wgs`, `n_unique_16S`)
-- **Shannon / richness bias and RMSE**
-- **PERMANOVA R² and p-value** for method effect in community composition
-
-## How to Interpret the Reports
-
-### Agreement panel
-
-- Higher Spearman/Pearson and lower L1 indicate better 16S-vs-WGS alignment.
-- L1 is a distance (not a correlation): lower values are better.
-
-### Shared/unique taxa panel
-
-- `n_common_taxa`: taxa detected by both methods.
-- `n_unique_wgs` / `n_unique_16S`: method-specific detections.
-- Always interpret unique taxa alongside read-depth balance (`Mapping.csv`: `WGS_count` vs `16S_count`).
-
-### Diversity panels
-
-- **Shannon bias** = mean(Shannon_16S - Shannon_WGS): captures direction.
-- **Shannon RMSE**: captures disagreement magnitude, not direction.
-- Same logic applies to richness bias/RMSE.
-
-### Ordination / PERMANOVA panel
-
-- Significant p-values with non-trivial R² indicate method contributes to composition differences.
-- Even modest R² can be relevant for downstream differential-abundance studies.
-
-## GTDB-Integrated Future Workflow
-
-The long-term workflow is documented in:
-
-- `gtdb_integrated_pipeline.md`
-
-That roadmap includes:
-
-1. **16S GTDB-aligned classification**
-- QIIME2 + RESCRIPt classifier training
-- SILVA sequence handling with GTDB taxonomy remapping
-- primer-region extraction and Naive Bayes classification
-
-2. **Shotgun GTDB profiling**
-- Kraken2/Bracken with GTDB-based databases (prebuilt or Struo2-built)
-- optional MetaPhlAn4-compatible strategy
-
-3. **Taxonomy harmonization and table merging (R)**
-- collapse both modalities to common rank (typically genus)
-- harmonize labels (`g__` cleanup, naming normalization)
-- compute shared-only and full-union comparisons
-
-4. **Compositional normalization and concordance analysis**
-- CLR transforms with pseudocount
-- per-taxon Spearman concordance
-- sample-level agreement summaries and visualization
-
-## Recommended Next Analyses
-
-1. Pin and document one GTDB release (versioned metadata in outputs).
-2. Add threshold sensitivity checks (prevalence, abundance, confidence).
-3. Add optional DA benchmarking (ALDEx2/ANCOM-BC) with truth-aware metrics for simulated/spike-in data.
-4. Track persistent method-sensitive taxa across pipelines.
-5. Export self-contained report bundles for external collaborators.
-
-## Reproducibility Notes
-
-- Keep configuration files under version control.
-- Record software/database versions for every run.
-- Preserve portable report bundles (`html + assets + pdf + stats`) for sharing.
-
-## Results Interpretation Guide
-
-For step-by-step interpretation of the generated PDF reports, see:
-
-- [results_interpretation_guide.md](results_interpretation_guide.md)
