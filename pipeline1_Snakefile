@@ -1,0 +1,80 @@
+import glob
+import os
+
+
+DATA_DIR = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/DataSets/Zymobiomics_Data"
+SAMPLES_16S = ["NP0440-MB5", "NP0553-MB1", "NP0610-MB1"]
+
+GG2_DATABASE = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S/2024.09.backbone.v4.nb.qza"
+
+
+rule all:
+    input:
+        "results/16S/demux.qza",
+        "results/16S/dada2_table.qza",
+        "results/16S/gg2_taxonomy.qza"
+
+rule generate_manifest:
+    output:
+        "results/16S/manifest.tsv"
+    run:
+        import os
+        import glob
+        
+        with open(output[0], "w") as f:
+            f.write("sample-id\tforward-absolute-filepath\treverse-absolute-filepath\n")
+            for sample in SAMPLES_16S:
+                # Find R1 and R2
+                r1_files = glob.glob(f"{DATA_DIR}/{sample}/*_R1_*.fastq.gz")
+                r2_files = glob.glob(f"{DATA_DIR}/{sample}/*_R2_*.fastq.gz")
+                
+                # Zymo fastq pairs might have multiple files per sample, we'll write them out as sample_1, sample_2 if needed
+                for i, (r1, r2) in enumerate(zip(sorted(r1_files), sorted(r2_files))):
+                    sample_name = sample if len(r1_files) == 1 else f"{sample}_{i+1}"
+                    f.write(f"{sample_name}\t{os.path.abspath(r1)}\t{os.path.abspath(r2)}\n")
+
+rule qiime_import:
+    input:
+        manifest="results/16S/manifest.tsv"
+    output:
+        "results/16S/demux.qza"
+    shell:
+        """
+        qiime tools import \\
+            --type 'SampleData[PairedEndSequencesWithQuality]' \\
+            --input-path {input.manifest} \\
+            --output-path {output} \\
+            --input-format PairedEndFastqManifestPhred33V2
+        """
+
+rule qiime_dada2:
+    input:
+        "results/16S/demux.qza"
+    output:
+        table="results/16S/dada2_table.qza",
+        rep_seqs="results/16S/rep_seqs.qza",
+        stats="results/16S/dada2_stats.qza"
+    shell:
+        """
+        qiime dada2 denoise-paired \\
+            --i-demultiplexed-seqs {input} \\
+            --p-trunc-len-f 150 \\
+            --p-trunc-len-r 150 \\
+            --o-table {output.table} \\
+            --o-representative-sequences {output.rep_seqs} \\
+            --o-denoising-stats {output.stats}
+        """
+
+rule gg2_classify:
+    input:
+        rep_seqs="results/16S/rep_seqs.qza"
+    output:
+        "results/16S/gg2_taxonomy.qza"
+    shell:
+        """
+        qiime feature-classifier classify-sklearn \\
+            --i-classifier {GG2_DATABASE} \\
+            --i-reads {input.rep_seqs} \\
+            --o-classification {output}
+        """
+

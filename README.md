@@ -24,6 +24,57 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 - **Shotgun side:** Map WGS reads to Greengenes2 reference genomes using **Woltka** (Web of Life Toolkit App), which produces OGU (Operational Genomic Unit) feature tables directly compatible with the same GG2 taxonomy.
 - **Key advantage:** Both sides share the exact same Greengenes2 taxonomy tree, enabling direct label-level comparison without additional harmonization.
 
+**How to Run Pipeline 1:**
+
+**A. 16S portion** (Snakemake — runs on interactive node)
+
+1. Navigate to the project directory:
+   ```bash
+   cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+   ```
+2. Start an interactive session and activate your QIIME2 environment:
+   ```bash
+   sinteractive --mem=32g -c16
+   conda activate qiime2-amplicon-2024.5
+   ```
+3. Run the 16S pipeline:
+   ```bash
+   module load python
+   snakemake -s pipeline1_Snakefile --cores 8
+   ```
+4. Output files in `results/16S/`:
+   - `demux.qza` — imported paired-end reads
+   - `dada2_table.qza` — ASV feature table
+   - `rep_seqs.qza` — representative sequences
+   - `dada2_stats.qza` — denoising statistics
+   - `gg2_taxonomy.qza` — GG2 taxonomy assignments (Naive Bayes classifier, v2024.09)
+
+**B. MGS portion** (standalone scripts — submitted via SLURM sbatch)
+
+> Requires ≥80 GB memory per alignment job. Do **not** run on an interactive node.
+
+1. **Step 1 — Bowtie2 alignment:** Submit individual sbatch jobs to SLURM.
+   ```bash
+   cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+   bash submit_bowtie2_zymo.sh
+   # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 80 GB / 4 CPUs / 3-day walltime
+   # Monitor with: squeue -u $USER
+   ```
+2. **Step 2 — Woltka + QIIME2 processing:** Run after *all* Bowtie2 jobs finish.
+   ```bash
+   # Activate environments (need both woltka and qiime2)
+   conda activate qiime2-amplicon-2024.5
+   bash process_woltka_zymo.sh
+   ```
+3. Output files in `results/MGS/`:
+   - `alignments/*.sam` — Bowtie2 alignments against WoLr2
+   - `woltka_out.biom` — raw OGU feature table
+   - `ogu_table.qza` — OGU table (QIIME2 artifact)
+   - `ogu_taxonomy.qza` — GG2 taxonomy for OGUs
+   - `ogu_table_gg2.qza` — OGU table filtered to GG2 features
+   - `otu_table_genus.tsv` — genus-level counts (samples × genus)
+   - `otu_table_full.tsv` — full OGU counts with GG2 taxonomy column
+
 ### Pipeline 2 — 16S Refseq + Kraken2/Bracken
 
 - **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database in QIIME2.
