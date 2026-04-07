@@ -1,0 +1,81 @@
+import glob
+import os
+
+##############################################################################
+#  Pipeline 3 — 16S side
+#
+#  16S RefSeq classification of amplicon data using DADA2 ASVs from Pipeline 1.
+#  Reuses: results/16S/dada2_table.qza, results/16S/rep_seqs.qza
+#
+#  Usage:
+#    conda activate qiime2-amplicon-2024.5
+#    module load python
+#    snakemake -s pipeline3_Snakefile --cores 8
+##############################################################################
+
+REFSEQ_16S_DIR = "/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S"
+REFSEQ_V4_CLASSIFIER = f"{REFSEQ_16S_DIR}/refseq16s_V4_nb.qza"
+REFSEQ_TAXONOMY_QZA = f"{REFSEQ_16S_DIR}/refseq16s_taxonomy.qza"
+
+P3_16S = "results/pipeline3/16S"
+
+rule all:
+    input:
+        f"{P3_16S}/refseq_taxonomy.qza",
+        f"{P3_16S}/table_genus.qza",
+        f"{P3_16S}/otu_table_genus.tsv"
+
+# ── Step 1: Classify ASVs against 16S RefSeq V4 NB classifier ───────────
+rule refseq_classify:
+    input:
+        rep_seqs="results/16S/rep_seqs.qza"
+    output:
+        f"{P3_16S}/refseq_taxonomy.qza"
+    shell:
+        """
+        mkdir -p {P3_16S}
+        qiime feature-classifier classify-sklearn \\
+            --i-classifier {REFSEQ_V4_CLASSIFIER} \\
+            --i-reads {input.rep_seqs} \\
+            --o-classification {output}
+        """
+
+# ── Step 2: Collapse to genus level (level 6) ───────────────────────────
+rule collapse_genus:
+    input:
+        table="results/16S/dada2_table.qza",
+        taxonomy=f"{P3_16S}/refseq_taxonomy.qza"
+    output:
+        f"{P3_16S}/table_genus.qza"
+    shell:
+        """
+        qiime taxa collapse \\
+            --i-table {input.table} \\
+            --i-taxonomy {input.taxonomy} \\
+            --p-level 6 \\
+            --o-collapsed-table {output}
+        """
+
+# ── Step 3: Export genus table to TSV ────────────────────────────────────
+rule export_genus_tsv:
+    input:
+        f"{P3_16S}/table_genus.qza"
+    output:
+        f"{P3_16S}/otu_table_genus.tsv"
+    shell:
+        """
+        WORKDIR="{P3_16S}/export_genus"
+        mkdir -p "$WORKDIR"
+
+        qiime tools export \\
+            --input-path {input} \\
+            --output-path "$WORKDIR"
+
+        biom convert \\
+            -i "$WORKDIR/feature-table.biom" \\
+            -o {output} \\
+            --to-tsv
+
+        # Remove biom comment header line
+        tail -n +2 {output} > {output}.tmp && mv {output}.tmp {output}
+        """

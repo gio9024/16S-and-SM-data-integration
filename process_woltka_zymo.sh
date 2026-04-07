@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
 set -e
 ##############################################################################
-#  Step 2:  Woltka classify  +  QIIME 2  taxonomy  +  TSV export
+#  Step 2:  QIIME 2  taxonomy  +  TSV export  (post-Woltka)
 #
-#  Run AFTER all Bowtie 2 swarm jobs finish.
+#  Run AFTER Woltka classification is complete.
 #
 #  Prerequisites:
-#    - SAM files in results/MGS/alignments/
-#    - conda activate qiime2-amplicon-2024.10  (or whichever QIIME2 env)
-#    - woltka available (conda activate woltka)
+#    - woltka_out.biom in results/MGS/  (run woltka separately in its env)
+#    - conda activate qiime2-amplicon-2024.5
 #
 #  Usage:  bash process_woltka_zymo.sh
 ##############################################################################
 
-ALIGN_DIR="results/MGS/alignments"
 OUT_DIR="results/MGS"
 GG2_TAX="/DCEG/Projects/Microbiome/Combined_Study/gg2_refs/taxonomy.tsv"
 
 cd "$(dirname "$0")"
 
-echo "=== Step 2a: Woltka OGU classification ==="
-woltka classify \
-  -i "${ALIGN_DIR}" \
-  -o "${OUT_DIR}/woltka_out.biom"
+if [[ ! -f "${OUT_DIR}/woltka_out.biom" ]]; then
+  echo "ERROR: ${OUT_DIR}/woltka_out.biom not found."
+  echo "Run woltka first:  conda activate woltka && woltka classify -i results/MGS/alignments -o results/MGS/woltka_out.biom"
+  exit 1
+fi
 
 echo "=== Step 2b: Import OGU table to QIIME 2 ==="
 qiime tools import \

@@ -83,9 +83,86 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 
 ### Pipeline 3 — 16S Refseq + 16S Extraction from WGS
 
-- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database in QIIME2.
-- **Shotgun side:** First extract 16S-like reads from WGS data using **SortMeRNA** or **Barrnap**, then classify the extracted reads with **Kraken2/Bracken** against a **16S RefSeq** database via MOSHPIT.
-- **Key advantage:** By extracting 16S sequences from shotgun reads before classification, both methods profile the same marker gene region, reducing methodological bias in the comparison.
+- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database using the V4 NB classifier in QIIME2.
+- **Shotgun side:** Extract 16S rRNA reads from WGS data using **SortMeRNA** (v4.3.6, SILVA rRNA database), then import extracted reads into QIIME2, run DADA2 denoising, and classify ASVs with the **same RefSeq 16S NB classifier** (full-length version).
+- **Key advantage:** Both sides use the **exact same RefSeq 16S database and NCBI taxonomy**, ensuring genus labels are directly comparable. By extracting 16S sequences from shotgun reads before classification, both methods profile the same marker gene region, reducing methodological bias.
+
+**How to Run Pipeline 3:**
+
+**A. One-time setup** — install SortMeRNA
+
+```bash
+# Create sortmerna conda environment (v4.3.6 for compute node compatibility)
+conda create -n sortmerna -c bioconda -c conda-forge sortmerna=4.3.6 python=3.10 -y
+
+# Download SortMeRNA rRNA reference database
+cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+mkdir -p databases/sortmerna_rRNA
+cd databases/sortmerna_rRNA
+wget https://github.com/biocore/sortmerna/releases/download/v4.3.4/database.tar.gz
+tar -xzf database.tar.gz
+cd ../..
+```
+
+**B. 16S portion** (Snakemake — runs on interactive node)
+
+> Reuses DADA2 outputs (`dada2_table.qza`, `rep_seqs.qza`) from Pipeline 1.
+
+1. Start an interactive session and activate QIIME2:
+   ```bash
+   sinteractive --mem=32g -c16
+   conda activate qiime2-amplicon-2024.5
+   ```
+2. Run the 16S pipeline:
+   ```bash
+   module load python
+   snakemake -s pipeline3_Snakefile -c8
+   ```
+3. Output files in `results/pipeline3/16S/`:
+   - `refseq_taxonomy.qza` — RefSeq 16S taxonomy assignments (V4 NB classifier)
+   - `table_genus.qza` — genus-level collapsed table
+   - `otu_table_genus.tsv` — genus-level counts (samples × genus, NCBI taxonomy)
+
+**C. MGS portion — Step 1: Extract 16S reads** (SLURM sbatch)
+
+> Requires 32 GB memory per job. Uses SortMeRNA to identify and extract 16S rRNA reads from shotgun FASTQs.
+
+1. Submit SortMeRNA extraction jobs:
+   ```bash
+   cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+   bash submit_sortmerna_zymo.sh
+   # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 32 GB / 8 CPUs / 1-day walltime
+   # Monitor with: squeue -u $USER
+   ```
+2. Output files in `results/pipeline3/MGS/sortmerna/`:
+   - `{prefix}_16S_fwd.fastq.gz` — extracted 16S forward reads
+   - `{prefix}_16S_rev.fastq.gz` — extracted 16S reverse reads
+   - `{prefix}_non16S_fwd/rev.fastq.gz` — non-16S reads (discarded)
+
+**D. MGS portion — Step 2: QIIME2 classification** (interactive node, after SortMeRNA finishes)
+
+> Imports extracted 16S reads into QIIME2 and classifies with the **same RefSeq 16S database** used on the 16S amplicon side.
+
+1. Activate QIIME2 and run the processing script:
+   ```bash
+   conda activate qiime2-amplicon-2024.5
+   bash process_sortmerna_qiime2_zymo.sh
+   ```
+2. Output files in `results/pipeline3/MGS/`:
+   - `16S_extracted_demux.qza` — imported extracted 16S reads
+   - `dada2_table.qza` — ASV feature table from extracted 16S reads
+   - `rep_seqs.qza` — representative sequences
+   - `refseq_taxonomy.qza` — RefSeq 16S taxonomy (full-length NB classifier)
+   - `table_genus.qza` — genus-level collapsed table
+   - `otu_table_genus.tsv` — genus-level counts (samples × genus, NCBI taxonomy)
+
+**E. Comparison**
+
+Both genus tables use NCBI taxonomy labels (`k__Bacteria; p__...; g__...`):
+- `results/pipeline3/16S/otu_table_genus.tsv` — 16S amplicon side
+- `results/pipeline3/MGS/otu_table_genus.tsv` — MGS extracted-16S side
+
+> **Note:** The 16S side uses the V4 region NB classifier (`refseq16s_V4_nb.qza`) while the MGS side uses the full-length NB classifier (`refseq16s_fullLength_nb.qza`). Both are trained on the same underlying RefSeq 16S sequences (26,244 dereplicated sequences) with identical NCBI taxonomy, so genus labels match exactly.
 
 ## Database Overview
 
