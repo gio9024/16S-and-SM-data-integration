@@ -1,6 +1,6 @@
-# Pipeline 3: 16S-Subset RefSeq (Extraction)
+# Pipeline 3: RefSeq 16S Extraction
 
-This pipeline extracts 16S rRNA reads from the shotgun pool to ensure consistency with the 16S sequencing data.
+This pipeline extracts 16S rRNA reads from shotgun data and classifies them using the **same NCBI RefSeq 16S database** used on the 16S amplicon side, ensuring identical taxonomy labels for cross-method comparison.
 
 ## Workflow Visualization
 
@@ -8,16 +8,31 @@ This pipeline extracts 16S rRNA reads from the shotgun pool to ensure consistenc
 
 ## Step-by-Step Instructions
 
-### 1. 16S rRNA Processing (RefSeq)
-- **Tool**: QIIME 2 / DADA2
-- **Goal**: Standard 16S processing using RefSeq as the reference database.
+### 16S rRNA Workflow
 
-### 2. Shotgun Metagenomics Processing (16S Subset)
-- **Tool**: SortMeRNA / Barrnap + QIIME 2 MOSHPIT
-- **Extraction**: Filter MGS FASTQ files for 16S-like reads using SortMeRNA or Barrnap.
-- **Classification**: Classify ONLY the extracted 16S reads against the **RefSeq 16S** database using Kraken2/Bracken.
+> Reuses DADA2 outputs (`dada2_table.qza`, `rep_seqs.qza`) from Pipeline 1.
+
+1. **RefSeq 16S V4 NB Classifier** — Classify the Pipeline 1 ASVs against the NCBI RefSeq 16S V4 Naive Bayes classifier (`refseq16s_V4_nb.qza`) using `qiime feature-classifier classify-sklearn`.
+2. **Collapse to Genus** — Collapse the ASV table to genus level (level 6) using `qiime taxa collapse`.
+3. **Export TSV** — Export genus-level table to TSV via `biom convert`.
+
+### MGS Shotgun Workflow
+
+1. **SortMeRNA v4.3.6** — Extract 16S rRNA reads from shotgun FASTQs using SortMeRNA with the SILVA rRNA database (`--paired_in --out2`). Submitted via SLURM sbatch (32 GB / 8 CPUs per job).
+2. **Import to QIIME2** — Create a manifest from extracted 16S FASTQ pairs and import into QIIME2 as `SampleData[PairedEndSequencesWithQuality]`.
+3. **DADA2 Denoise** — Denoise extracted 16S reads (`--p-trunc-len-f 0 --p-trunc-len-r 0`, no truncation since these are random 16S fragments, not amplicon reads).
+4. **RefSeq 16S Full-Length NB Classifier** — Classify ASVs against the NCBI RefSeq 16S full-length Naive Bayes classifier (`refseq16s_fullLength_nb.qza`) using `qiime feature-classifier classify-sklearn`.
+5. **Collapse to Genus** — Collapse to genus level (level 6) using `qiime taxa collapse`.
+6. **Export TSV** — Export genus-level table to TSV via `biom convert`.
+
+### Cross-Method Comparison
+
+Both genus-level TSV files use **identical NCBI taxonomy labels** (`k__Bacteria; p__...; g__...`):
+- `results/pipeline3/16S/otu_table_genus.tsv` — 16S amplicon side (V4 classifier)
+- `results/pipeline3/MGS/otu_table_genus.tsv` — MGS extracted-16S side (full-length classifier)
+
+> **Note:** The V4 and full-length classifiers are trained on the same 26,244 dereplicated RefSeq 16S sequences with identical NCBI taxonomy, so genus labels match exactly.
 
 ## References
 - [SortMeRNA GitHub](https://github.com/sortmerna/sortmerna)
-- [Barrnap GitHub](https://github.com/tseemann/barrnap)
-- [MOSHPIT Documentation](https://bokulich-lab.github.io/moshpit-docs/chapters/03_taxonomic_classification/reads.html)
+- [NCBI RefSeq 16S](https://www.ncbi.nlm.nih.gov/refseq/targetedloci/)
