@@ -52,8 +52,8 @@ PREFIXES=(
 
 FOUND=0
 for PREFIX in "${PREFIXES[@]}"; do
-    FWD="${SMR_DIR}/${PREFIX}_16S_fwd.fastq.gz"
-    REV="${SMR_DIR}/${PREFIX}_16S_rev.fastq.gz"
+    FWD="${SMR_DIR}/${PREFIX}_16S_fwd.fq.gz"
+    REV="${SMR_DIR}/${PREFIX}_16S_rev.fq.gz"
 
     if [[ -f "$FWD" && -f "$REV" ]]; then
         ABS_FWD="$(cd "$(dirname "$FWD")" && pwd)/$(basename "$FWD")"

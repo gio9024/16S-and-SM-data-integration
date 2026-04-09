@@ -135,19 +135,22 @@ cd ../..
    # Monitor with: squeue -u $USER
    ```
 2. Output files in `results/pipeline3/MGS/sortmerna/`:
-   - `{prefix}_16S_fwd.fastq.gz` — extracted 16S forward reads
-   - `{prefix}_16S_rev.fastq.gz` — extracted 16S reverse reads
-   - `{prefix}_non16S_fwd/rev.fastq.gz` — non-16S reads (discarded)
+    - `{prefix}_16S_fwd.fq.gz` — extracted 16S forward reads
+    - `{prefix}_16S_rev.fq.gz` — extracted 16S reverse reads
+    - `{prefix}_non16S_fwd/rev.fq.gz` — non-16S reads (discarded)
 
-**D. MGS portion — Step 2: QIIME2 classification** (interactive node, after SortMeRNA finishes)
+**D. MGS portion — Step 2: QIIME2 classification** (SLURM sbatch, after SortMeRNA finishes)
 
-> Imports extracted 16S reads into QIIME2 and classifies with the **same RefSeq 16S database** used on the 16S amplicon side.
+> Imports extracted 16S reads into QIIME2 and classifies with the **same RefSeq 16S database** used on the 16S amplicon side. DADA2 denoising can take 1–2+ hours, so submit via sbatch rather than running interactively.
 
-1. Activate QIIME2 and run the processing script:
-   ```bash
-   conda activate qiime2-amplicon-2024.5
-   bash process_sortmerna_qiime2_zymo.sh
-   ```
+1. Submit the QIIME2 processing job:
+    ```bash
+    cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+    sbatch submit_qiime2_zymo_p3.sh
+    # Submits 1 job (cgrq partition, 32 GB / 8 CPUs / 1-day walltime)
+    # Monitor with: squeue -u $USER
+    # View progress: tail -f results/pipeline3/MGS/logs/p3_qiime2_<jobid>.out
+    ```
 2. Output files in `results/pipeline3/MGS/`:
    - `16S_extracted_demux.qza` — imported extracted 16S reads
    - `dada2_table.qza` — ASV feature table from extracted 16S reads
@@ -169,8 +172,38 @@ Both genus tables use NCBI taxonomy labels (`k__Bacteria; p__...; g__...`):
 | Database | Version | Description | Used In |
 |----------|---------|-------------|---------|
 | **Greengenes2** | 2024.09 | Unified phylogenomic reference integrating full-length 16S sequences with whole-genome data. Provides a single taxonomy tree usable by both 16S classifiers and WGS tools like Woltka. | Pipeline 1 (16S + Shotgun) |
-| **NCBI RefSeq** (full) | Latest | Comprehensive collection of curated genomic sequences from NCBI. Used as the Kraken2/Bracken index for whole-genome shotgun classification. | Pipeline 2 (Shotgun) |
-| **NCBI 16S RefSeq** | Latest | Curated subset of NCBI RefSeq containing only 16S rRNA gene sequences. Used for both 16S amplicon classification in QIIME2 and for classifying 16S reads extracted from WGS. | Pipeline 2 & 3 (16S); Pipeline 3 (Shotgun) |
+| **NCBI RefSeq** (full) | 2024-01-12 | Comprehensive collection of curated genomic sequences from NCBI. Used as the Kraken2/Bracken index for whole-genome shotgun classification. | Pipeline 2 (Shotgun) |
+| **NCBI 16S RefSeq** | Nov 2024 | Curated subset of NCBI RefSeq containing only 16S rRNA gene sequences (26,244 dereplicated). Used for 16S amplicon classification in QIIME2 and for classifying 16S reads extracted from WGS. | Pipeline 2 & 3 (16S); Pipeline 3 (Shotgun) |
+| **SortMeRNA rRNA** | v4.3 | SILVA-based rRNA reference database shipped with SortMeRNA. Used to extract 16S reads from shotgun data. | Pipeline 3 (Shotgun) |
+
+### Database Locations on Cluster
+
+**Pipeline 1 — Greengenes2:**
+| File | Path |
+|------|------|
+| GG2 V4 NB Classifier | `/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S/2024.09.backbone.v4.nb.qza` |
+| GG2 Taxonomy QZA | `/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/greengenes2-2024.09-taxonomy.qza` |
+| GG2 Taxonomy TSV (for Woltka) | `/DCEG/Projects/Microbiome/Combined_Study/gg2_refs/taxonomy.tsv` |
+| WoLr2 Bowtie2 Index | `/DCEG/Projects/Microbiome/Combined_Study/vol2/bowtie2/WoLr2/WoLr2` |
+
+**Pipeline 2 — Kraken2/Bracken (full RefSeq):**
+| File | Path |
+|------|------|
+| Kraken2 Standard Database | `/DCEG/Projects/Microbiome/Metagenomics/Kraken/kraken2/k2_standard_20240112/` |
+| Bracken Binary | `/DCEG/Projects/Microbiome/Metagenomics/Kraken/Bracken/bracken` |
+
+**Pipelines 2 & 3 — NCBI 16S RefSeq:**
+| File | Path |
+|------|------|
+| RefSeq 16S V4 NB Classifier (16S amplicon) | `/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S/refseq16s_V4_nb.qza` |
+| RefSeq 16S Full-Length NB Classifier (MGS extracted 16S) | `/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S/refseq16s_fullLength_nb.qza` |
+| RefSeq 16S Taxonomy | `/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S/refseq16s_taxonomy.qza` |
+| RefSeq 16S Reference Sequences | `/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S/refseq16s.derep.fna` |
+
+**Pipeline 3 — SortMeRNA:**
+| File | Path |
+|------|------|
+| SortMeRNA rRNA Database (SILVA) | `databases/sortmerna_rRNA/smr_v4.3_default_db.fasta` |
 
 ### Key Database Considerations
 
