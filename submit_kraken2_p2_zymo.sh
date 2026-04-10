@@ -42,7 +42,7 @@ for SAMPLE in "${!SAMPLES[@]}"; do
 #SBATCH --output=${LOG_DIR}/${JOB_NAME}_%j.out
 #SBATCH --error=${LOG_DIR}/${JOB_NAME}_%j.err
 #SBATCH --partition=cgrq
-#SBATCH --mem=64g
+#SBATCH --mem=100g
 #SBATCH --cpus-per-task=8
 #SBATCH --time=1-00:00:00
 

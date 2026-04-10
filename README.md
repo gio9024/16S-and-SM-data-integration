@@ -77,15 +77,58 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 
 ### Pipeline 2 — 16S Refseq + Kraken2/Bracken
 
-- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database in QIIME2.
-- **Shotgun side:** Classify whole WGS reads with **Kraken2** (k-mer based taxonomic classification) followed by **Bracken** (Bayesian re-estimation of abundance) using a RefSeq-based database, run within the QIIME2 **MOSHPIT** plugin.
+- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database using the V4 NB classifier in QIIME2. (Same as Pipeline 3 16S side.)
+- **Shotgun side:** Classify whole WGS reads with **Kraken2** (k-mer based taxonomic classification) against the full Kraken2 standard database (built from RefSeq genomes), followed by **Bracken** (Bayesian re-estimation of abundance at genus level).
 - **Key advantage:** Uses the comprehensive NCBI RefSeq taxonomy on both sides; Kraken2/Bracken is fast and widely adopted for WGS profiling.
+
+> **Note on taxonomy:** Both sides use NCBI taxonomy, so genus names match directly (e.g., "Bacillus"). However, the 16S side classifies against 16S rRNA sequences only, while the MGS side classifies against full genomes — abundance profiles may differ due to this methodological difference.
+
+**How to Run Pipeline 2:**
+
+**A. 16S portion** — Already done
+
+> Reuses the same results from Pipeline 3's 16S side (`results/pipeline3/16S/otu_table_genus.tsv`), which classifies DADA2 ASVs against the RefSeq 16S V4 NB classifier.
+
+**B. MGS portion — Step 1: Kraken2 classification** (SLURM sbatch)
+
+> Classifies raw shotgun reads against the full Kraken2 standard database. Requires ≥100 GB memory (the hash table alone is 72 GB).
+
+1. Submit Kraken2 classification jobs:
+    ```bash
+    cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
+    bash submit_kraken2_p2_zymo.sh
+    # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 100 GB / 8 CPUs / 1-day walltime
+    # Monitor with: squeue -u $USER
+    ```
+2. Output files in `results/pipeline2/MGS/kraken2/`:
+    - `{prefix}.kraken` — per-read classification
+    - `{prefix}.kreport` — Kraken2 summary report
+
+**C. MGS portion — Step 2: Bracken genus estimation** (interactive, after Kraken2 finishes)
+
+> Runs Bracken for genus-level abundance re-estimation and combines all libraries into a single table.
+
+1. Run Bracken processing:
+    ```bash
+    module load kraken/2.17.1
+    bash process_bracken_p2_zymo.sh
+    ```
+2. Output files in `results/pipeline2/MGS/`:
+    - `bracken/{prefix}_genus.bracken` — per-library Bracken genus estimates
+    - `bracken/{prefix}_genus.breport` — Bracken-adjusted Kraken reports
+    - `otu_table_genus.tsv` — combined genus-level counts (samples × genus)
+
+**D. Comparison**
+
+Both genus tables use NCBI taxonomy labels:
+- `results/pipeline3/16S/otu_table_genus.tsv` — 16S amplicon side (RefSeq 16S V4 classifier)
+- `results/pipeline2/MGS/otu_table_genus.tsv` — MGS side (Kraken2/Bracken, full RefSeq)
 
 ### Pipeline 3 — 16S Refseq + 16S Extraction from WGS
 
-- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database using the V4 NB classifier in QIIME2.
-- **Shotgun side:** Extract 16S rRNA reads from WGS data using **SortMeRNA** (v4.3.6, SILVA rRNA database), then import extracted reads into QIIME2, run DADA2 denoising, and classify ASVs with the **same RefSeq 16S NB classifier** (full-length version).
-- **Key advantage:** Both sides use the **exact same RefSeq 16S database and NCBI taxonomy**, ensuring genus labels are directly comparable. By extracting 16S sequences from shotgun reads before classification, both methods profile the same marker gene region, reducing methodological bias.
+- **16S side:** DADA2 denoising → classify against the **NCBI 16S RefSeq** database using the V4 NB classifier in QIIME2. (Same as Pipeline 2 16S side.)
+- **Shotgun side:** Extract 16S rRNA reads from WGS data using **SortMeRNA** (v4.3.6, SILVA rRNA database), then classify extracted reads with **Kraken2/Bracken** using the same Kraken2 standard database as Pipeline 2.
+- **Key advantage:** By extracting 16S sequences from shotgun reads before classification, Pipeline 3 isolates the taxonomic signal from the same marker gene region as the 16S amplicon data. Comparing Pipeline 2 (all reads) vs Pipeline 3 (16S reads only) reveals how much non-16S genomic content influences Kraken2 classification.
 
 **How to Run Pipeline 3:**
 
@@ -135,37 +178,46 @@ cd ../..
    # Monitor with: squeue -u $USER
    ```
 2. Output files in `results/pipeline3/MGS/sortmerna/`:
-    - `{prefix}_16S_fwd.fq.gz` — extracted 16S forward reads
-    - `{prefix}_16S_rev.fq.gz` — extracted 16S reverse reads
-    - `{prefix}_non16S_fwd/rev.fq.gz` — non-16S reads (discarded)
+   - `{prefix}_16S_fwd.fq.gz` — extracted 16S forward reads
+   - `{prefix}_16S_rev.fq.gz` — extracted 16S reverse reads
+   - `{prefix}_non16S_fwd/rev.fq.gz` — non-16S reads (discarded)
 
-**D. MGS portion — Step 2: QIIME2 classification** (SLURM sbatch, after SortMeRNA finishes)
+**D. MGS portion — Step 2: Kraken2 classification** (SLURM sbatch, after SortMeRNA finishes)
 
-> Imports extracted 16S reads into QIIME2 and classifies with the **same RefSeq 16S database** used on the 16S amplicon side. DADA2 denoising can take 1–2+ hours, so submit via sbatch rather than running interactively.
+> Classifies extracted 16S reads against the Kraken2 standard database (same as Pipeline 2). Requires ≥100 GB memory for the database.
 
-1. Submit the QIIME2 processing job:
+1. Submit Kraken2 classification jobs:
     ```bash
     cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
-    sbatch submit_qiime2_zymo_p3.sh
-    # Submits 1 job (cgrq partition, 32 GB / 8 CPUs / 1-day walltime)
+    bash submit_kraken2_p3_zymo.sh
+    # Submits 4 jobs (cgrq partition, 100 GB / 8 CPUs / 1-day walltime)
     # Monitor with: squeue -u $USER
-    # View progress: tail -f results/pipeline3/MGS/logs/p3_qiime2_<jobid>.out
+    ```
+2. Output files in `results/pipeline3/MGS/kraken2/`:
+    - `{prefix}.kraken` — per-read classification
+    - `{prefix}.kreport` — Kraken2 summary report
+
+**E. MGS portion — Step 3: Bracken genus estimation** (interactive, after Kraken2 finishes)
+
+> Runs Bracken for genus-level abundance re-estimation and combines all libraries into a single table.
+
+1. Run Bracken processing:
+    ```bash
+    module load kraken/2.17.1
+    bash process_bracken_p3_zymo.sh
     ```
 2. Output files in `results/pipeline3/MGS/`:
-   - `16S_extracted_demux.qza` — imported extracted 16S reads
-   - `dada2_table.qza` — ASV feature table from extracted 16S reads
-   - `rep_seqs.qza` — representative sequences
-   - `refseq_taxonomy.qza` — RefSeq 16S taxonomy (full-length NB classifier)
-   - `table_genus.qza` — genus-level collapsed table
-   - `otu_table_genus.tsv` — genus-level counts (samples × genus, NCBI taxonomy)
+    - `bracken/{prefix}_genus.bracken` — per-library Bracken genus estimates
+    - `bracken/{prefix}_genus.breport` — Bracken-adjusted Kraken reports
+    - `otu_table_genus.tsv` — combined genus-level counts (samples × genus)
 
-**E. Comparison**
+**F. Comparison**
 
-Both genus tables use NCBI taxonomy labels (`k__Bacteria; p__...; g__...`):
-- `results/pipeline3/16S/otu_table_genus.tsv` — 16S amplicon side
-- `results/pipeline3/MGS/otu_table_genus.tsv` — MGS extracted-16S side
+Both genus tables use NCBI taxonomy labels:
+- `results/pipeline3/16S/otu_table_genus.tsv` — 16S amplicon side (RefSeq 16S V4 classifier)
+- `results/pipeline3/MGS/otu_table_genus.tsv` — MGS side (Kraken2/Bracken on extracted 16S reads)
 
-> **Note:** The 16S side uses the V4 region NB classifier (`refseq16s_V4_nb.qza`) while the MGS side uses the full-length NB classifier (`refseq16s_fullLength_nb.qza`). Both are trained on the same underlying RefSeq 16S sequences (26,244 dereplicated sequences) with identical NCBI taxonomy, so genus labels match exactly.
+> **Pipeline 2 vs 3 (MGS side):** Both use the same Kraken2 standard database, but Pipeline 2 classifies **all** shotgun reads while Pipeline 3 classifies only **SortMeRNA-extracted 16S** reads. This reveals whether pre-filtering to 16S sequences changes the taxonomic profile.
 
 ## Database Overview
 
