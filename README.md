@@ -5,9 +5,71 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 ## Project Goals
 
 1. Using three pipelines to generate output for 16S and MGS results.
-2. Process three pipelines on different projects:
-   - a. Fecal QC data set
-   - b. Internal QC data set
+2. Process three pipelines on different datasets:
+   - a. **Zymo mock community** — benchmark dataset (completed)
+   - b. **Patrick SRA dataset** — 107 paired 16S + WGS samples (in progress)
+   - c. Fecal QC dataset (planned)
+
+---
+
+## Datasets
+
+### Zymo Mock Community (Benchmark)
+
+| Field | Details |
+|---|---|
+| **Purpose** | Benchmarking — known-composition mock community (ZymoBIOMICS) |
+| **Samples** | 2 WGS + 2 16S paired samples |
+| **Sample names** | Zymo-1, Zymo-2 |
+| **Status** | ✅ All three pipelines completed |
+| **Data location** | `DataSets/Zymo/` |
+| **Scripts** | `submit_bowtie2_zymo.sh`, `submit_kraken2_p2_zymo.sh`, `submit_sortmerna_zymo.sh`, etc. |
+| **Results** | `results/zymo/pipeline1-3/` |
+| **Reports** | `Zymo_Pipeline1_Comparison_Report.md`, `Zymo_Pipeline2_Comparison_Report.md`, `Zymo_Pipeline3_Comparison_Report.md`, `Zymo_Combine_Report.md` |
+
+### Patrick SRA Dataset
+
+| Field | Details |
+|---|---|
+| **Source** | NCBI SRA (Patrick et al.) |
+| **Samples** | 107 paired samples — each with matched 16S amplicon + WGS |
+| **Sample naming** | `BCH-F*` (fecal) and `BCH-h*` series |
+| **Sample mapping** | `DataSets/Patrick_SRA_Data/16S_WGS_sample_name_mappings.csv` |
+| **Mapping format** | `WGS_SRR, 16S_SRR, SAMPLE_NAME` (no header, comma-separated) |
+| **Data location** | `DataSets/Patrick_SRA_Data/WGS_RAW/` and `DataSets/Patrick_SRA_Data/16S_RAW/` |
+| **Scripts** | See table below |
+| **Results** | `results/patrick/pipeline1-3/` |
+| **Processing guide** | [`processing_new_dataset.md`](processing_new_dataset.md) |
+
+**Patrick processing scripts:**
+
+| Pipeline | Step | Script |
+|---|---|---|
+| P1 MGS | Bowtie2 alignment | `submit_bowtie2_patrick.sh` |
+| P1 MGS | Woltka + QIIME2 export (parallel) | `submit_woltka_patrick.sh` |
+| P1 16S | DADA2 + GG2 classify | `pipeline1_patrick_Snakefile` |
+| P2 MGS | Kraken2 classification | `submit_kraken2_p2_patrick.sh` |
+| P2 MGS | Bracken + combine table | `process_bracken_p2_patrick.sh` |
+| P3 MGS | SortMeRNA 16S extraction | `submit_sortmerna_patrick.sh` |
+| P3 MGS | Kraken2 on extracted 16S | `submit_kraken2_p3_patrick.sh` |
+| P3 MGS | Bracken + combine table | `process_bracken_p3_patrick.sh` |
+| P2 & P3 16S | RefSeq 16S classify (shared) | `pipeline3_patrick_Snakefile` |
+
+**Current processing status (as of 2026-04-19):**
+
+| Step | Status |
+|---|---|
+| P1 MGS: Bowtie2 (107 SAM files) | ✅ Complete |
+| P1 MGS: Woltka parallel batches | 🔄 Running (10 batch jobs + merge pending) |
+| P1 16S: DADA2 + GG2 | ⏳ Pending |
+| P2 MGS: Kraken2 (107 kreports) | ✅ Complete |
+| P2 MGS: Bracken + genus table | ⏳ Pending |
+| P3 MGS: SortMeRNA (107 extractions) | ✅ Complete |
+| P3 MGS: Kraken2 on extracted 16S | ⏳ Pending (submit next) |
+| P3 MGS: Bracken + genus table | ⏳ Pending |
+| P2 & P3 16S: RefSeq classify | ⏳ Pending (after P1 16S) |
+
+---
 
 ## Pipeline Comparison
 
