@@ -1,0 +1,35 @@
+# Raw sequencing data
+DataSets/
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+*.bam
+*.sam
+
+# Pipeline outputs / results
+results/
+
+# Temporary / batch files
+woltka_batches/
+*.biom
+*.qza
+*.qzv
+
+# Snakemake internals
+.snakemake/
+
+# PPTX / generated presentation files
+*.pptx
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs and sbatch scripts generated at runtime
+*.out
+*.err
+*.sbatch
+
+# Databases (large reference files)
+databases/

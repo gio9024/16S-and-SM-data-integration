@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16S & Shotgun Metagenomics — Project Summary</title>
+    <meta name="description" content="Summary slide for metagenomics pipeline framework comparing three pipelines on Fecal and Zymo QC datasets.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --p1: #6366f1;
+            --p1-light: #a5b4fc;
+            --p2: #0ea5e9;
+            --p2-light: #7dd3fc;
+            --p3: #10b981;
+            --p3-light: #6ee7b7;
+            --accent: #f472b6;
+            --gold: #f59e0b;
+            --bg: #080e1d;
+            --surface: rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.09);
+            --text: #f0f4ff;
+            --muted: #8b99b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 10% 10%, rgba(99,102,241,0.18) 0px, transparent 55%),
+                radial-gradient(ellipse at 90% 85%, rgba(16,185,129,0.12) 0px, transparent 55%),
+                radial-gradient(ellipse at 70% 5%, rgba(14,165,233,0.12) 0px, transparent 45%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 32px 24px 48px;
+        }
+
+        /* ── HEADER ── */
+        .slide-header {
+            text-align: center;
+            max-width: 960px;
+            margin: 0 auto 40px;
+        }
+
+        .slide-header .kicker {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--p1-light);
+            background: rgba(99,102,241,0.12);
+            border: 1px solid rgba(99,102,241,0.3);
+            padding: 5px 16px;
+            border-radius: 100px;
+            margin-bottom: 18px;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(2rem, 4.5vw, 3.6rem);
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            background: linear-gradient(130deg, #ffffff 0%, var(--p1-light) 50%, var(--p2-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 14px;
+        }
+
+        .slide-header .sub {
+            font-size: 1rem;
+            color: var(--muted);
+            line-height: 1.6;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        /* ── MAIN LAYOUT ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ── SECTION LABELS ── */
+        .section-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 26px 28px;
+            backdrop-filter: blur(16px);
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(255,255,255,0.18);
+            transform: translateY(-3px);
+        }
+
+        /* ── PIPELINE CARDS ── */
+        .pipeline-section {
+            grid-column: 1 / -1;
+        }
+
+        .pipeline-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .pipe-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px 22px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .pipe-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 18px 18px 0 0;
+        }
+        .pipe-card.p1::before { background: linear-gradient(90deg, var(--p1), var(--p1-light)); }
+        .pipe-card.p2::before { background: linear-gradient(90deg, var(--p2), var(--p2-light)); }
+        .pipe-card.p3::before { background: linear-gradient(90deg, var(--p3), var(--p3-light)); }
+
+        .pipe-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.2); }
+
+        .pipe-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 100px;
+            margin-bottom: 12px;
+        }
+        .p1 .pipe-badge { background: rgba(99,102,241,0.15); color: var(--p1-light); border: 1px solid rgba(99,102,241,0.3); }
+        .p2 .pipe-badge { background: rgba(14,165,233,0.15); color: var(--p2-light); border: 1px solid rgba(14,165,233,0.3); }
+        .p3 .pipe-badge { background: rgba(16,185,129,0.15); color: var(--p3-light); border: 1px solid rgba(16,185,129,0.3); }
+
+        .pipe-card h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: #fff;
+        }
+
+        .flow-path {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 14px;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+        }
+
+        .flow-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            width: 30px;
+            flex-shrink: 0;
+        }
+        .p1 .flow-label { color: var(--p1-light); }
+        .p2 .flow-label { color: var(--p2-light); }
+        .p3 .flow-label { color: var(--p3-light); }
+
+        .flow-step {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 3px 8px;
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .arrow {
+            color: var(--muted);
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .pipe-advantage {
+            font-size: 0.78rem;
+            color: var(--muted);
+            line-height: 1.5;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .pipe-advantage strong {
+            color: var(--text);
+        }
+
+        /* ── DATABASE SECTION ── */
+        .db-section { grid-column: 1 / 2; }
+        .db-card    { grid-column: 2 / 3; }
+
+        .db-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .db-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .db-item:hover { background: rgba(255,255,255,0.06); }
+
+        .db-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .db-info { flex: 1; min-width: 0; }
+        .db-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+        .db-version {
+            font-size: 0.68rem;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .db-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+
+        .db-used {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .db-tag {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            padding: 2px 7px;
+            border-radius: 100px;
+        }
+        .tag-p1 { background: rgba(99,102,241,0.15); color: var(--p1-light); }
+        .tag-p2 { background: rgba(14,165,233,0.15); color: var(--p2-light); }
+        .tag-p3 { background: rgba(16,185,129,0.15); color: var(--p3-light); }
+
+        /* ── DATASET SECTION ── */
+        .datasets-section { grid-column: 1 / -1; }
+
+        .datasets-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .dataset-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px 26px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .dataset-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-3px); }
+
+        .dataset-card .ds-glow {
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .ds1 .ds-glow { background: var(--gold); }
+        .ds2 .ds-glow { background: var(--accent); }
+
+        .ds-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .ds-icon {
+            width: 48px; height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .ds1 .ds-icon { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); }
+        .ds2 .ds-icon { background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.3); }
+
+        .ds-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .ds-subtitle {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .ds-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: rgba(16,185,129,0.15);
+            color: var(--p3-light);
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        .ds-status::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--p3);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .ds-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+        }
+        .stat-val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+        }
+        .ds1 .stat-val { color: #fcd34d; }
+        .ds2 .stat-val { color: #f9a8d4; }
+        .stat-key {
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .ds-pipelines {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ds-pipe-tag {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 4px 11px;
+            border-radius: 7px;
+        }
+        .ds-pipe-tag.t1 { background: rgba(99,102,241,0.15); color: var(--p1-light); }
+        .ds-pipe-tag.t2 { background: rgba(14,165,233,0.15); color: var(--p2-light); }
+        .ds-pipe-tag.t3 { background: rgba(16,185,129,0.15); color: var(--p3-light); }
+
+        .ds-note {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-top: 6px;
+        }
+
+        /* ── FOOTER ── */
+        .slide-footer {
+            max-width: 1200px;
+            margin: 20px auto 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+
+        .footer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .footer-item .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .footer-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--p1-light);
+            text-decoration: none;
+            padding: 6px 14px;
+            background: rgba(99,102,241,0.1);
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .footer-link:hover { background: rgba(99,102,241,0.2); }
+
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .pipeline-row { grid-template-columns: 1fr; }
+            .datasets-row { grid-template-columns: 1fr; }
+            .pipeline-section, .db-section, .db-card, .datasets-section {
+                grid-column: 1 / -1;
+            }
+            .slide-footer { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ════════════════ HEADER ════════════════ -->
+    <header class="slide-header">
+        <div class="kicker">NCI-CGR · Microbiome &amp; Metagenomics</div>
+        <h1>16S &amp; Shotgun Metagenomics<br>Integration — Project Summary</h1>
+        <p class="sub">
+            Three parallel pipelines benchmarked across two QC datasets,
+            comparing 16S amplicon and whole-genome shotgun classification
+            with harmonized taxonomy strategies.
+        </p>
+    </header>
+
+    <!-- ════════════════ MAIN GRID ════════════════ -->
+    <div class="main-grid">
+
+        <!-- ── PIPELINES ── -->
+        <section class="pipeline-section">
+            <div class="section-label">Three Analysis Pipelines</div>
+            <div class="pipeline-row">
+
+                <!-- Pipeline 1 -->
+                <div class="pipe-card p1">
+                    <span class="pipe-badge">Pipeline 1</span>
+                    <h3>Greengenes2 + Woltka</h3>
+                    <div class="flow-path">
+                        <div class="flow-row">
+                            <span class="flow-label">16S</span>
+                            <span class="flow-step">DADA2</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">GG2 NB Classifier</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="flow-label">MGS</span>
+                            <span class="flow-step">Bowtie2 / WoLr2</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Woltka OGU</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                    </div>
+                    <p class="pipe-advantage">
+                        <strong>Key Advantage:</strong> Both 16S and MGS sides share the
+                        same Greengenes2 (2024.09) taxonomy tree — enabling direct
+                        label-level comparison with no additional harmonization.
+                    </p>
+                </div>
+
+                <!-- Pipeline 2 -->
+                <div class="pipe-card p2">
+                    <span class="pipe-badge">Pipeline 2</span>
+                    <h3>RefSeq + Kraken2/Bracken</h3>
+                    <div class="flow-path">
+                        <div class="flow-row">
+                            <span class="flow-label">16S</span>
+                            <span class="flow-step">DADA2</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">RefSeq V4 Classifier</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="flow-label">MGS</span>
+                            <span class="flow-step">Kraken2 (full RefSeq)</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Bracken</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                    </div>
+                    <p class="pipe-advantage">
+                        <strong>Key Advantage:</strong> Full RefSeq coverage on both sides
+                        uses NCBI taxonomy. Kraken2 + Bracken provides fast, accurate
+                        k-mer–based classification with lowest FP rate among MGS methods.
+                    </p>
+                </div>
+
+                <!-- Pipeline 3 -->
+                <div class="pipe-card p3">
+                    <span class="pipe-badge">Pipeline 3</span>
+                    <h3>SortMeRNA → Kraken2/Bracken</h3>
+                    <div class="flow-path">
+                        <div class="flow-row">
+                            <span class="flow-label">16S</span>
+                            <span class="flow-step">DADA2</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">RefSeq V4 Classifier</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                        <div class="flow-row">
+                            <span class="flow-label">MGS</span>
+                            <span class="flow-step">SortMeRNA (16S extract)</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Kraken2 + Bracken</span>
+                            <span class="arrow">→</span>
+                            <span class="flow-step">Genus Table</span>
+                        </div>
+                    </div>
+                    <p class="pipe-advantage">
+                        <strong>Key Advantage:</strong> Extracts only 16S rRNA reads from
+                        WGS data before classification, isolating the same marker gene
+                        carried by amplicon sequencing for maximum conceptual parity.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ── DATABASES ── -->
+        <section class="card" style="grid-column: 1 / -1;">
+            <div class="section-label">Reference Databases</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;">
+
+                <div class="db-item">
+                    <div class="db-icon" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);">🌿</div>
+                    <div class="db-info">
+                        <div class="db-name">Greengenes2</div>
+                        <div class="db-version">v2024.09 · GTDB taxonomy</div>
+                        <div class="db-desc">Unified phylogenomic reference integrating full-length 16S with whole-genome data. Single taxonomy tree usable by both QIIME2 and Woltka.</div>
+                        <div class="db-used">
+                            <span class="db-tag tag-p1">P1 16S</span>
+                            <span class="db-tag tag-p1">P1 MGS (WoLr2)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="db-item">
+                    <div class="db-icon" style="background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.3);">🧬</div>
+                    <div class="db-info">
+                        <div class="db-name">NCBI RefSeq (full genome)</div>
+                        <div class="db-version">Build 2024-01-12 · NCBI taxonomy</div>
+                        <div class="db-desc">Comprehensive curated genomic database. Kraken2/Bracken standard index (72 GB hash table) covering bacteria, archaea, fungi, viruses, and human.</div>
+                        <div class="db-used">
+                            <span class="db-tag tag-p2">P2 MGS</span>
+                            <span class="db-tag tag-p3">P3 MGS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="db-item">
+                    <div class="db-icon" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);">🔬</div>
+                    <div class="db-info">
+                        <div class="db-name">NCBI 16S RefSeq</div>
+                        <div class="db-version">Nov 2024 · 26,244 dereplicated sequences</div>
+                        <div class="db-desc">Curated 16S rRNA sequences from NCBI RefSeq. V4-region NB classifier for amplicons; full-length NB classifier for SortMeRNA-extracted reads.</div>
+                        <div class="db-used">
+                            <span class="db-tag tag-p2">P2 16S</span>
+                            <span class="db-tag tag-p3">P3 16S</span>
+                            <span class="db-tag tag-p3">P3 MGS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="db-item">
+                    <div class="db-icon" style="background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.3);">🎯</div>
+                    <div class="db-info">
+                        <div class="db-name">SortMeRNA rRNA (SILVA)</div>
+                        <div class="db-version">v4.3 · SILVA-based rRNA reference</div>
+                        <div class="db-desc">SILVA-derived rRNA reference shipped with SortMeRNA. Used to identify and extract 16S reads from raw shotgun FASTQs (~1.5% of reads recovered).</div>
+                        <div class="db-used">
+                            <span class="db-tag tag-p3">P3 MGS extraction</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ── DATASETS ── -->
+        <section class="datasets-section">
+            <div class="section-label">Completed Datasets</div>
+            <div class="datasets-row">
+
+                <!-- Dataset 1: Fecal -->
+                <div class="dataset-card ds1">
+                    <div class="ds-glow"></div>
+                    <div class="ds-header">
+                        <div class="ds-icon">💩</div>
+                        <div>
+                            <div class="ds-title">Fecal QC Dataset</div>
+                            <div class="ds-subtitle">Human stool — internal QC cohort</div>
+                        </div>
+                        <div style="margin-left: auto;"><span class="ds-status">Completed</span></div>
+                    </div>
+
+                    <div class="ds-stats">
+                        <div class="stat-box">
+                            <div class="stat-val">18</div>
+                            <div class="stat-key">Total Samples</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">3</div>
+                            <div class="stat-key">Pipelines Run</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">2</div>
+                            <div class="stat-key">Data Types</div>
+                        </div>
+                    </div>
+
+                    <p class="ds-note">
+                        Primary fecal microbiome samples processed through all three pipelines,
+                        generating paired 16S amplicon and shotgun metagenomics genus-level profiles
+                        for cross-method concordance analysis.
+                    </p>
+
+                    <div class="ds-pipelines">
+                        <span style="font-size:0.72rem; color: var(--muted); margin-right: 4px;">Pipelines:</span>
+                        <span class="ds-pipe-tag t1">P1 — GG2 / Woltka</span>
+                        <span class="ds-pipe-tag t2">P2 — RefSeq / Kraken2</span>
+                        <span class="ds-pipe-tag t3">P3 — SortMeRNA / Kraken2</span>
+                    </div>
+                </div>
+
+                <!-- Dataset 2: Zymo -->
+                <div class="dataset-card ds2">
+                    <div class="ds-glow"></div>
+                    <div class="ds-header">
+                        <div class="ds-icon">⚗️</div>
+                        <div>
+                            <div class="ds-title">Zymo Mock Community</div>
+                            <div class="ds-subtitle">ZymoBIOMICS D6305 — benchmark standard</div>
+                        </div>
+                        <div style="margin-left: auto;"><span class="ds-status">Completed</span></div>
+                    </div>
+
+                    <div class="ds-stats">
+                        <div class="stat-box">
+                            <div class="stat-val">10</div>
+                            <div class="stat-key">Total Samples</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">10</div>
+                            <div class="stat-key">Known Organisms</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val">9/10</div>
+                            <div class="stat-key">Best TP (P2/P3)</div>
+                        </div>
+                    </div>
+
+                    <p class="ds-note">
+                        Mock community with 8 bacteria + 2 fungi at known abundances.
+                        6 amplicon libraries + 4 MGS libraries benchmarked for TP, FP, and FN
+                        against the ZymoBIOMICS ground truth at 0.01% relative abundance cutoff.
+                    </p>
+
+                    <div class="ds-pipelines">
+                        <span style="font-size:0.72rem; color: var(--muted); margin-right: 4px;">Pipelines:</span>
+                        <span class="ds-pipe-tag t1">P1 — 8/10 TP · 29 FP</span>
+                        <span class="ds-pipe-tag t2">P2 — 9/10 TP · 7 FP ✓</span>
+                        <span class="ds-pipe-tag t3">P3 — 9/10 TP · 40 FP</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+
+    <!-- ════════════════ FOOTER ════════════════ -->
+    <footer class="slide-footer">
+        <div class="footer-item">
+            <div class="dot" style="background: var(--p1);"></div>
+            <span>Pipeline 1: Greengenes2 / Woltka / GTDB taxonomy</span>
+        </div>
+        <div class="footer-item">
+            <div class="dot" style="background: var(--p2);"></div>
+            <span>Pipeline 2: RefSeq full / Kraken2 + Bracken / NCBI taxonomy</span>
+        </div>
+        <div class="footer-item">
+            <div class="dot" style="background: var(--p3);"></div>
+            <span>Pipeline 3: SortMeRNA 16S extraction → Kraken2 + Bracken</span>
+        </div>
+        <a class="footer-link" href="https://github.com/gio9024/16S-and-SM-data-integration" target="_blank">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px; flex-shrink:0;"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            GitHub Repo
+        </a>
+    </footer>
+
+</body>
+</html>

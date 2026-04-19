@@ -1,0 +1,147 @@
+import glob
+import os
+import csv
+
+##############################################################################
+#  Pipeline 1 — 16S side (Patrick SRA Data)
+#
+#  Classifies paired-end 16S amplicon reads using DADA2 + GreenGenes2.
+#  Each sample corresponds to one SRR accession in 16S_RAW/.
+#
+#  Usage:
+#    conda activate qiime2-amplicon-2024.5
+#    module load python
+#    snakemake -s pipeline1_patrick_Snakefile --cores 8
+##############################################################################
+
+DATA_DIR = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/DataSets/Patrick_SRA_Data/16S_RAW"
+MAPPING_CSV = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/DataSets/Patrick_SRA_Data/16S_WGS_sample_name_mappings.csv"
+GG2_DATABASE = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S/2024.09.backbone.v4.nb.qza"
+OUT_BASE = "results/patrick/pipeline1"
+
+# Build mapping: BCH_sample -> 16S_SRR
+sample_map = {}  # {BCH_name: SRR_16S}
+with open(MAPPING_CSV) as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) >= 3:
+            wgs_srr, s16_srr, bch_name = parts[0].strip(), parts[1].strip(), parts[2].strip()
+            # Only include if the 16S file actually exists
+            fq1 = os.path.join(DATA_DIR, f"{s16_srr}_1.fastq.gz")
+            if os.path.exists(fq1):
+                sample_map[bch_name] = s16_srr
+
+SAMPLES = list(sample_map.keys())
+
+
+rule all:
+    input:
+        f"{OUT_BASE}/16S/manifest.tsv",
+        f"{OUT_BASE}/16S/demux.qza",
+        f"{OUT_BASE}/16S/dada2_table.qza",
+        f"{OUT_BASE}/16S/gg2_taxonomy.qza",
+        f"{OUT_BASE}/16S/otu_table_genus.tsv"
+
+rule generate_manifest:
+    output:
+        f"{OUT_BASE}/16S/manifest.tsv"
+    run:
+        import os
+        os.makedirs(f"{OUT_BASE}/16S", exist_ok=True)
+        with open(output[0], "w") as f:
+            f.write("sample-id\tforward-absolute-filepath\treverse-absolute-filepath\n")
+            for bch_name, srr in sample_map.items():
+                r1 = os.path.join(DATA_DIR, f"{srr}_1.fastq.gz")
+                r2 = os.path.join(DATA_DIR, f"{srr}_2.fastq.gz")
+                if os.path.exists(r1) and os.path.exists(r2):
+                    f.write(f"{bch_name}\t{os.path.abspath(r1)}\t{os.path.abspath(r2)}\n")
+                else:
+                    print(f"WARNING: skipping {bch_name} — files not found")
+
+rule qiime_import:
+    input:
+        manifest=f"{OUT_BASE}/16S/manifest.tsv"
+    output:
+        f"{OUT_BASE}/16S/demux.qza"
+    shell:
+        """
+        qiime tools import \\
+            --type 'SampleData[PairedEndSequencesWithQuality]' \\
+            --input-path {input.manifest} \\
+            --output-path {output} \\
+            --input-format PairedEndFastqManifestPhred33V2
+        """
+
+rule qiime_dada2:
+    input:
+        f"{OUT_BASE}/16S/demux.qza"
+    output:
+        table=f"{OUT_BASE}/16S/dada2_table.qza",
+        rep_seqs=f"{OUT_BASE}/16S/rep_seqs.qza",
+        stats=f"{OUT_BASE}/16S/dada2_stats.qza"
+    shell:
+        """
+        qiime dada2 denoise-paired \\
+            --i-demultiplexed-seqs {input} \\
+            --p-trunc-len-f 150 \\
+            --p-trunc-len-r 150 \\
+            --o-table {output.table} \\
+            --o-representative-sequences {output.rep_seqs} \\
+            --o-denoising-stats {output.stats} \\
+            --p-n-threads 8
+        """
+
+rule gg2_classify:
+    input:
+        rep_seqs=f"{OUT_BASE}/16S/rep_seqs.qza"
+    output:
+        f"{OUT_BASE}/16S/gg2_taxonomy.qza"
+    shell:
+        """
+        qiime feature-classifier classify-sklearn \\
+            --i-classifier {GG2_DATABASE} \\
+            --i-reads {input.rep_seqs} \\
+            --o-classification {output} \\
+            --p-n-jobs 8
+        """
+
+rule collapse_genus:
+    input:
+        table=f"{OUT_BASE}/16S/dada2_table.qza",
+        taxonomy=f"{OUT_BASE}/16S/gg2_taxonomy.qza"
+    output:
+        f"{OUT_BASE}/16S/table_genus.qza"
+    shell:
+        """
+        qiime taxa collapse \\
+            --i-table {input.table} \\
+            --i-taxonomy {input.taxonomy} \\
+            --p-level 6 \\
+            --o-collapsed-table {output}
+        """
+
+rule export_genus_tsv:
+    input:
+        f"{OUT_BASE}/16S/table_genus.qza"
+    output:
+        f"{OUT_BASE}/16S/otu_table_genus.tsv"
+    shell:
+        """
+        WORKDIR="{OUT_BASE}/16S/export_genus"
+        mkdir -p "$WORKDIR"
+
+        qiime tools export \\
+            --input-path {input} \\
+            --output-path "$WORKDIR"
+
+        biom convert \\
+            -i "$WORKDIR/feature-table.biom" \\
+            -o {output} \\
+            --to-tsv
+
+        # Remove biom comment header line
+        tail -n +2 {output} > {output}.tmp && mv {output}.tmp {output}
+        """
