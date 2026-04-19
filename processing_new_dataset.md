@@ -10,12 +10,13 @@ Each dataset runs through three independent pipelines that compare **16S amplico
 
 | Pipeline | 16S Side | MGS Side | Database |
 |---|---|---|---|
-| **Pipeline 1** | DADA2 + GreenGenes2 (QIIME2) | Bowtie2 → Woltka | WoLr2 |
-| **Pipeline 2** | DADA2 + GreenGenes2 (QIIME2) | Kraken2 + Bracken | RefSeq (k2_standard) |
+| **Pipeline 1** | DADA2 + GreenGenes2 (QIIME2) | Bowtie2 → Woltka | WoLr2 / GG2 |
+| **Pipeline 2** | DADA2 + RefSeq 16S (QIIME2) | Kraken2 + Bracken | RefSeq (k2_standard) |
 | **Pipeline 3** | DADA2 + RefSeq 16S (QIIME2) | SortMeRNA → Kraken2 + Bracken | RefSeq 16S |
 
 > [!NOTE]
-> Pipelines 2 and 3 share the same **16S side** DADA2 outputs from Pipeline 1. Pipeline 3's 16S classification uses a different classifier (RefSeq 16S V4) applied to the same ASVs.
+> **Pipeline 1** uses GreenGenes2 on both sides (GG2 classifier for 16S; WoLr2/GG2 taxonomy for MGS).
+> **Pipelines 2 and 3** use RefSeq on both sides and **share the same 16S output** — the RefSeq 16S V4 classifier is applied to Pipeline 1's DADA2 ASVs via `pipeline3_patrick_Snakefile`, producing `results/patrick/pipeline3/16S/otu_table_genus.tsv`. Pipeline 2 references this same file.
 
 ---
 
@@ -160,8 +161,10 @@ bash process_bracken_p2_patrick.sh
 
 ### 16S Side
 
-Pipeline 2 uses the **same 16S output as Pipeline 1**:
-`results/patrick/pipeline1/16S/otu_table_genus.tsv`
+Pipeline 2 uses the **same 16S output as Pipeline 3** (RefSeq 16S V4 classifier, not GG2):
+`results/patrick/pipeline3/16S/otu_table_genus.tsv`
+
+This is produced by `pipeline3_patrick_Snakefile` — run it before comparing Pipeline 2 results. See Pipeline 3 → 16S Side below.
 
 ---
 
@@ -239,14 +242,15 @@ results/patrick/
 │       ├── otu_table_genus.tsv      ← MGS x GG2 genus table
 │       └── otu_table_full.tsv
 ├── pipeline2/
-│   ├── 16S/                         ← symlink/copy from pipeline1/16S/
 │   └── MGS/
 │       ├── kraken2/                 ← per-sample .kraken + .kreport
 │       ├── bracken/                 ← per-sample _genus.bracken
 │       └── otu_table_genus.tsv     ← MGS x genus table (Kraken2/Bracken)
+│   (16S → shared from pipeline3/16S/otu_table_genus.tsv)
 └── pipeline3/
     ├── 16S/
     │   └── otu_table_genus.tsv      ← 16S x RefSeq genus table
+    │                                   (shared by Pipeline 2 AND Pipeline 3)
     └── MGS/
         ├── sortmerna/               ← extracted 16S reads per sample
         ├── kraken2/                 ← per-sample .kraken + .kreport
