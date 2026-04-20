@@ -283,7 +283,125 @@ Key findings:
 
 ---
 
-## 9. Key Findings
+## 9. Genus Detection at 0.01% Relative Abundance Cutoff
+
+> **Context:** For Zymo (mock community), the 0.01% cutoff was used to count **false positives** — genera that exceeded noise level but weren't in the true community. For Patrick (real human gut), there is no ground truth, so the same cutoff instead measures **how many genera survive noise filtering** — a proxy for biologically meaningful detection.
+
+### 9.1 Cutoff-Based Detection Summary
+
+| Pipeline | Side | Total Genera | >0.01% (mean RA) | >0.01% (any sample) | >0.01% (≥10% samples) | >0.01% (>50% samples) |
+|----------|------|:---:|:---:|:---:|:---:|:---:|
+| **Pipeline 1** | 16S (GG2) | 55 | 51 | 55 | 10 | 1 |
+| **Pipeline 1** | MGS (Woltka) | 5,073 | 239 | 595 | 294 | 155 |
+| **Pipeline 2** | MGS (Kraken2) | 3,543 | 143 | 446 | 195 | 93 |
+| **Pipeline 3** | 16S (RefSeq) | 50 | 45 | 50 | 9 | 1 |
+| **Pipeline 3** | MGS (SortMeRNA+K2) | 2,286 | 171 | 771 | 243 | 111 |
+
+> **Column definitions:**
+> - **>0.01% (mean RA)**: genera whose mean relative abundance across all 107 samples exceeds 0.01%
+> - **>0.01% (any sample)**: genera exceeding 0.01% in at least 1 sample
+> - **>0.01% (≥10% samples)**: genera exceeding 0.01% in ≥11 of 107 samples (robust detection)
+> - **>0.01% (>50% samples)**: genera exceeding 0.01% in majority of samples (core microbiome)
+
+### 9.2 Average Genera Per Sample Above 0.01% Cutoff
+
+| Pipeline | Side | Mean Genera/Sample | Median | Min | Max |
+|----------|------|-----------------:|:---:|:---:|:---:|
+| **Pipeline 1** | 16S (GG2) | 3.4 | 3 | 0 | 12 |
+| **Pipeline 1** | MGS (Woltka) | 168.6 | 175 | 54 | 255 |
+| **Pipeline 2** | MGS (Kraken2) | 110.7 | 104 | 20 | 262 |
+| **Pipeline 3** | 16S (RefSeq) | 2.9 | 2 | 0 | 8 |
+| **Pipeline 3** | MGS (SortMeRNA+K2) | 133.0 | 122 | 50 | 365 |
+
+> The low per-sample genus count on the 16S side (~3/sample) reflects the shallow depth and sparse nature of DADA2 classification across 107 samples at this cutoff.
+
+### 9.3 Top Genera Above 0.01% (Mean Relative Abundance)
+
+**Pipeline 1 — MGS (Woltka/GTDB), top 10 above cutoff:**
+
+| Genus (GTDB) | Mean RA% | Samples >0.01% |
+|--------------|:--------:|:--------------:|
+| *Bacteroides_H_857956* | 17.83% | 106/107 |
+| *Phocaeicola_A* | 15.64% | 105/107 |
+| *Prevotella* | 13.90% | 106/107 |
+| *Agathobacter_164117* | 3.48% | 105/107 |
+| *Alistipes_A_871400* | 3.47% | 105/107 |
+| *Faecalibacterium* | 2.95% | 105/107 |
+| *Gemmiger_A_73129* | 2.33% | 105/107 |
+| *Roseburia_A_166204* | 2.12% | 105/107 |
+| *Blautia_A_141781* | 2.07% | 105/107 |
+| *Parabacteroides_B_862066* | 2.01% | 105/107 |
+
+**Pipeline 2 — MGS (Kraken2/NCBI), top 10 above cutoff:**
+
+| Genus (NCBI) | Mean RA% | Samples >0.01% | Note |
+|--------------|:--------:|:--------------:|------|
+| *Bacteroides* | 23.44% | 106/107 | |
+| *Phocaeicola* | 15.49% | 105/107 | |
+| *Segatella* | 14.84% | 105/107 | |
+| *Faecalibacterium* | 9.20% | 106/107 | |
+| *Blautia* | 3.38% | 105/107 | |
+| *Parabacteroides* | 2.74% | 106/107 | |
+| *Alistipes* | 2.44% | 105/107 | |
+| *Roseburia* | 2.11% | 105/107 | |
+| *Agathobacter* | 1.86% | 105/107 | |
+| *Bifidobacterium* | 1.78% | 104/107 | |
+| *Homo* | 1.43% | **107/107** | ⚠️ Host DNA |
+
+**Pipeline 3 — MGS (SortMeRNA+K2/NCBI), top 10 above cutoff:**
+
+| Genus (NCBI) | Mean RA% | Samples >0.01% | Note |
+|--------------|:--------:|:--------------:|------|
+| *Phocaeicola* | 14.04% | 106/107 | |
+| *Bacteroides* | 13.11% | 106/107 | |
+| *Segatella* | 12.65% | 81/107 | |
+| *Homo* | **8.21%** | **107/107** | ⚠️ Host rRNA |
+| *Faecalibacterium* | 7.97% | 106/107 | |
+| *Blautia* | 5.41% | 105/107 | |
+| *Roseburia* | 2.41% | 105/107 | |
+| *Agathobacter* | 1.83% | 104/107 | |
+| *Escherichia* | 1.76% | 101/107 | |
+| *Parabacteroides* | 1.70% | 105/107 | |
+
+### 9.4 Key Observations from 0.01% Cutoff Analysis
+
+**Noise filtering effect:**
+- **P1 MGS**: 5,073 total genera → 239 above mean 0.01% cutoff (~4.7% retained) — indicating ~95% of genera are ultra-low-abundance noise
+- **P2 MGS**: 3,543 total genera → 143 above mean 0.01% cutoff (~4.0% retained)
+- **P3 MGS**: 2,286 total genera → 171 above mean 0.01% cutoff (~7.5% retained) — higher retention rate suggests 16S-extracted reads are enriched for real signal
+
+**Core microbiome at >50% prevalence:**
+- **P1 MGS**: 155 genera present in majority of samples — richest core
+- **P3 MGS**: 111 genera in majority of samples
+- **P2 MGS**: 93 genera in majority of samples — most conservative core
+- **16S (both)**: only 1 genus present in majority of samples at 0.01% cutoff — reflects sparse per-sample depth
+
+**Host contamination (*Homo*) comparison:**
+
+| Pipeline | *Homo* Mean RA% | Present in all 107 samples? |
+|----------|:---:|:---:|
+| P1 MGS (Woltka) | N/A (not in WoLr2) | — |
+| P2 MGS (Kraken2) | 1.43% | ✅ Yes |
+| P3 MGS (SortMeRNA+K2) | **8.21%** | ✅ Yes |
+
+*Homo* appears in **every sample** for P2 and P3 — it should be removed for downstream microbiome analyses. P3 human contamination (8.21% mean RA) is ~5.7× higher than P2 (1.43%), driven by SortMeRNA capturing human 18S/rRNA sequences.
+
+**Cutoff comparison with Zymo benchmark:**
+
+| Context | Pipeline | Total genera | Above 0.01% (any sample) |
+|---------|----------|:---:|:---:|
+| Zymo (mock, 4 samples) | P1 MGS | ~5,674 | 29 FP |
+| Zymo (mock, 4 samples) | P2 MGS | ~2,186 | 7 FP |
+| Zymo (mock, 4 samples) | P3 MGS | ~1,244 | 40 FP |
+| Patrick (human, 107 samples) | P1 MGS | 5,073 | 595 |
+| Patrick (human, 107 samples) | P2 MGS | 3,543 | 446 |
+| Patrick (human, 107 samples) | P3 MGS | 2,286 | 771 |
+
+> The much higher "above cutoff" counts in Patrick vs Zymo are **expected** — Patrick is a diverse real microbiome with hundreds of genuine taxa, not a 10-organism mock.
+
+---
+
+## 10. Key Findings
 
 ### Biological Concordance Across Pipelines
 - **Core gut microbiome genera are consistently detected across all three pipelines**: *Bacteroides*, *Phocaeicola*, *Segatella/Prevotella*, *Faecalibacterium*, *Blautia*, *Roseburia*, *Bifidobacterium*
@@ -317,7 +435,7 @@ Key findings:
 
 ---
 
-## 10. Genus Tables Location
+## 11. Genus Tables Location
 
 All genus-level OTU tables are available at:
 
@@ -332,7 +450,7 @@ All genus-level OTU tables are available at:
 
 ---
 
-## 11. Next Steps
+## 12. Next Steps
 
 - [ ] **Cross-pipeline genus-level comparison**: Map GTDB names (P1) to NCBI names (P2/P3) using the GG2 taxonomy TSV for a unified comparison table
 - [ ] **Alpha diversity analysis**: Compute Shannon index, Observed species, Chao1 per pipeline across 107 samples
