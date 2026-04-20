@@ -7,7 +7,7 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 1. Using three pipelines to generate output for 16S and MGS results.
 2. Process three pipelines on different datasets:
    - a. **Zymo mock community** — benchmark dataset (completed)
-   - b. **Patrick SRA dataset** — 107 paired 16S + WGS samples (in progress)
+   - b. **Patrick SRA dataset** — 107 paired 16S + MGS samples (completed)
    - c. Fecal QC dataset (planned)
 
 ---
@@ -19,10 +19,10 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 | Field | Details |
 |---|---|
 | **Purpose** | Benchmarking — known-composition mock community (ZymoBIOMICS) |
-| **Samples** | 2 WGS + 2 16S paired samples |
-| **Sample names** | Zymo-1, Zymo-2 |
+| **Samples** | 4 MGS + 6 16S samples |
+| **Sample names** | Zymo-1, Zymo-2, etc. |
 | **Status** | ✅ All three pipelines completed |
-| **Data location** | `DataSets/Zymo/` |
+| **Data location** | `DataSets/Zymobiomics_Data/` |
 | **Scripts** | `submit_bowtie2_zymo.sh`, `submit_kraken2_p2_zymo.sh`, `submit_sortmerna_zymo.sh`, etc. |
 | **Results** | `results/zymo/pipeline1-3/` |
 | **Reports** | `Zymo_Pipeline1_Comparison_Report.md`, `Zymo_Pipeline2_Comparison_Report.md`, `Zymo_Pipeline3_Comparison_Report.md`, `Zymo_Combine_Report.md` |
@@ -60,14 +60,14 @@ This repository organizes a unified framework to compare **16S amplicon** and **
 | Step | Status |
 |---|---|
 | P1 MGS: Bowtie2 (107 SAM files) | ✅ Complete |
-| P1 MGS: Woltka parallel batches | 🔄 Running (10 batch jobs + merge pending) |
-| P1 16S: DADA2 + GG2 | ⏳ Pending |
+| P1 MGS: Woltka + QIIME2 export | ✅ Complete |
+| P1 16S: DADA2 + GG2 | ✅ Complete |
 | P2 MGS: Kraken2 (107 kreports) | ✅ Complete |
-| P2 MGS: Bracken + genus table | ⏳ Pending |
+| P2 MGS: Bracken + genus table | ✅ Complete |
 | P3 MGS: SortMeRNA (107 extractions) | ✅ Complete |
-| P3 MGS: Kraken2 on extracted 16S | ⏳ Pending (submit next) |
-| P3 MGS: Bracken + genus table | ⏳ Pending |
-| P2 & P3 16S: RefSeq classify | ⏳ Pending (after P1 16S) |
+| P3 MGS: Kraken2 on extracted 16S | ✅ Complete |
+| P3 MGS: Bracken + genus table | ✅ Complete |
+| P2 & P3 16S: RefSeq classify | ✅ Complete |
 
 ---
 
@@ -119,7 +119,7 @@ This repository organizes a unified framework to compare **16S amplicon** and **
    ```bash
    cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
    bash submit_bowtie2_zymo.sh
-   # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 80 GB / 4 CPUs / 3-day walltime
+   # Submits 4 jobs (4 MGS samples), each with 80 GB / 4 CPUs / 3-day walltime
    # Monitor with: squeue -u $USER
    ```
 2. **Step 2 — Woltka + QIIME2 processing:** Run after *all* Bowtie2 jobs finish.
@@ -159,7 +159,7 @@ This repository organizes a unified framework to compare **16S amplicon** and **
     ```bash
     cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
     bash submit_kraken2_p2_zymo.sh
-    # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 100 GB / 8 CPUs / 1-day walltime
+    # Submits 4 jobs (4 MGS samples), each with 100 GB / 8 CPUs / 1-day walltime
     # Monitor with: squeue -u $USER
     ```
 2. Output files in `results/pipeline2/MGS/kraken2/`:
@@ -236,7 +236,7 @@ cd ../..
    ```bash
    cd /DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S-and-SM-data-integration
    bash submit_sortmerna_zymo.sh
-   # Submits 4 jobs (2 samples × 2 FASTQ pairs), each with 32 GB / 8 CPUs / 1-day walltime
+   # Submits 4 jobs (4 MGS samples), each with 32 GB / 8 CPUs / 1-day walltime
    # Monitor with: squeue -u $USER
    ```
 2. Output files in `results/pipeline3/MGS/sortmerna/`:
@@ -285,7 +285,8 @@ Both genus tables use NCBI taxonomy labels:
 
 | Database | Version | Description | Used In |
 |----------|---------|-------------|---------|
-| **Greengenes2** | 2024.09 | Unified phylogenomic reference integrating full-length 16S sequences with whole-genome data. Provides a single taxonomy tree usable by both 16S classifiers and WGS tools like Woltka. | Pipeline 1 (16S + Shotgun) |
+| **Greengenes2** | 2024.09 | Unified phylogenomic reference integrating full-length 16S sequences with whole-genome data. Provides a single taxonomy tree usable by both 16S classifiers and WGS tools like Woltka. | Pipeline 1 (16S classifier + Shotgun taxonomy) |
+| **WoLr2** (Web of Life r2) | — | Comprehensive prokaryotic reference genome database (Bowtie2 index). Shotgun reads are aligned to WoLr2 via Bowtie2, then classified by Woltka using the Greengenes2 taxonomy. Prokaryotic only — no eukaryotes. | Pipeline 1 (Shotgun alignment) |
 | **NCBI RefSeq** (full) | 2024-01-12 | Comprehensive collection of curated genomic sequences from NCBI. Used as the Kraken2/Bracken index for whole-genome shotgun classification. | Pipeline 2 (Shotgun) |
 | **NCBI 16S RefSeq** | Nov 2024 | Curated subset of NCBI RefSeq containing only 16S rRNA gene sequences (26,244 dereplicated). Used for 16S amplicon classification in QIIME2 and for classifying 16S reads extracted from WGS. | Pipeline 2 & 3 (16S); Pipeline 3 (Shotgun) |
 | **SortMeRNA rRNA** | v4.3 | SILVA-based rRNA reference database shipped with SortMeRNA. Used to extract 16S reads from shotgun data. | Pipeline 3 (Shotgun) |

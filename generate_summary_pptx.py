@@ -261,7 +261,15 @@ DATABASES = [
         "desc": "Phylogenomic reference integrating full-length 16S with WGS. "
                 "Single tree for both QIIME2 and Woltka.",
         "tags": [("P1 16S", C_P1L, C_P1BG, C_P1LINE),
-                 ("P1 MGS", C_P1L, C_P1BG, C_P1LINE)],
+                 ("P1 MGS (tax)", C_P1L, C_P1BG, C_P1LINE)],
+    },
+    {
+        "icon": "🌐",
+        "name": "WoLr2 (Web of Life r2)",
+        "ver":  "Bowtie2 index · Prokaryotic genomes",
+        "desc": "Prokaryotic genome DB for WGS read alignment. Reads mapped "
+                "via Bowtie2, then classified by Woltka using GG2 taxonomy.",
+        "tags": [("P1 MGS (align)", C_P1L, C_P1BG, C_P1LINE)],
     },
     {
         "icon": "🧬",
@@ -292,7 +300,7 @@ DATABASES = [
     },
 ]
 
-DB_ITEM_W = (DB_CARD_W - 0.3) / 4
+DB_ITEM_W = (DB_CARD_W - 0.3) / 5
 
 for i, db in enumerate(DATABASES):
     il = DB_CARD_L + 0.15 + i * DB_ITEM_W
