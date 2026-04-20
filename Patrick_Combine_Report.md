@@ -25,32 +25,8 @@
 
 ---
 
-## 2. Pipeline Completion Status
 
-✅ All five output tables generated successfully as of 2026-04-20.
-
-| Output File | Pipeline | Side | Status | Completed |
-|-------------|----------|------|--------|-----------|
-| `results/patrick/pipeline1/16S/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) | ✅ Done | Apr 20 02:17 |
-| `results/patrick/pipeline1/MGS/otu_table_genus.tsv` | Pipeline 1 | MGS (Woltka) | ✅ Done | Apr 19 21:14 |
-| `results/patrick/pipeline2/MGS/otu_table_genus.tsv` | Pipeline 2 | MGS (Kraken2/Bracken) | ✅ Done | Apr 19 21:24 |
-| `results/patrick/pipeline3/16S/otu_table_genus.tsv` | Pipeline 3 | 16S (RefSeq) | ✅ Done | Apr 20 02:21 |
-| `results/patrick/pipeline3/MGS/otu_table_genus.tsv` | Pipeline 3 | MGS (SortMeRNA+K2) | ✅ Done | Apr 19 22:01 |
-
-**Intermediate output counts (all 107/107):**
-
-| Step | Count | Expected |
-|------|-------|----------|
-| P1 MGS — Bowtie2 SAM alignments | 107 | 107 ✅ |
-| P2 MGS — Kraken2 `.kreport` files | 107 | 107 ✅ |
-| P2 MGS — Bracken genus outputs | 107 | 107 ✅ |
-| P3 MGS — SortMeRNA extracted reads | 107 | 107 ✅ |
-| P3 MGS — Kraken2 `.kreport` files | 107 | 107 ✅ |
-| P3 MGS — Bracken genus outputs | 107 | 107 ✅ |
-
----
-
-## 3. Output Summary Table
+## 2. Output Summary Table
 
 | Pipeline | Side | Samples | Genera Detected | Total Classified Reads |
 |----------|------|:---:|:---:|:---:|
@@ -65,7 +41,7 @@
 
 ---
 
-## 4. Pipeline 1 — Greengenes2 + Woltka
+## 3. Pipeline 1 — Greengenes2 + Woltka
 
 ### 16S (DADA2 + GG2)
 
@@ -122,13 +98,11 @@ Key observations:
 Key observations:
 - **Largest total classified reads** (4.42B) — Bowtie2 + WoLr2 captures the full complement of bacterial reads
 - Dominant genera (Bacteroides/Prevotella/Alistipes) are consistent with a healthy gut microbiome
-- **5,073 genera detected** — highest genus diversity among all pipelines, reflecting WoLr2's broad prokaryotic coverage
-- No eukaryotic reads (WoLr2 is a prokaryotic genome database)
-- GTDB suffixed names require mapping to NCBI names for cross-pipeline comparison
+- **5,073 genera detected** — highest genus diversity among all pipelines.
 
 ---
 
-## 5. Pipeline 2 — Kraken2/Bracken (Full RefSeq)
+## 4. Pipeline 2 — Kraken2/Bracken (Full RefSeq)
 
 ### 16S (DADA2 + NCBI RefSeq 16S V4 Classifier)
 
@@ -168,7 +142,7 @@ Key observations:
 
 ---
 
-## 6. Pipeline 3 — SortMeRNA + Kraken2/Bracken (16S RefSeq)
+## 5. Pipeline 3 — SortMeRNA + Kraken2/Bracken (16S RefSeq)
 
 ### 16S (DADA2 + NCBI RefSeq 16S V4 Classifier)
 
@@ -232,7 +206,7 @@ Key observations:
 
 ---
 
-## 7. Pipeline MGS Side — Head-to-Head Comparison
+## 6. Pipeline MGS Side — Head-to-Head Comparison
 
 ### Top 10 Shared Genera — Relative Abundance (%) by Pipeline
 
@@ -263,7 +237,7 @@ Key observations:
 
 ---
 
-## 8. Pipeline 16S Side — Comparison
+## 7. Pipeline 16S Side — Comparison
 
 | Metric | P1 16S (GG2) | P3/P2 16S (NCBI RefSeq) |
 |--------|:---:|:---:|
@@ -283,7 +257,7 @@ Key findings:
 
 ---
 
-## 9. Genus Detection at 0.01% Relative Abundance Cutoff
+## 8. Genus Detection at 0.01% Relative Abundance Cutoff
 
 > **Context:** For Zymo (mock community), the 0.01% cutoff was used to count **false positives** — genera that exceeded noise level but weren't in the true community. For Patrick (real human gut), there is no ground truth, so the same cutoff instead measures **how many genera survive noise filtering** — a proxy for biologically meaningful detection.
 
@@ -386,22 +360,18 @@ Key findings:
 
 *Homo* appears in **every sample** for P2 and P3 — it should be removed for downstream microbiome analyses. P3 human contamination (8.21% mean RA) is ~5.7× higher than P2 (1.43%), driven by SortMeRNA capturing human 18S/rRNA sequences.
 
-**Cutoff comparison with Zymo benchmark:**
+**Cutoff General Stats:**
 
 | Context | Pipeline | Total genera | Above 0.01% (any sample) |
 |---------|----------|:---:|:---:|
-| Zymo (mock, 4 samples) | P1 MGS | ~5,674 | 29 FP |
-| Zymo (mock, 4 samples) | P2 MGS | ~2,186 | 7 FP |
-| Zymo (mock, 4 samples) | P3 MGS | ~1,244 | 40 FP |
 | Patrick (human, 107 samples) | P1 MGS | 5,073 | 595 |
 | Patrick (human, 107 samples) | P2 MGS | 3,543 | 446 |
 | Patrick (human, 107 samples) | P3 MGS | 2,286 | 771 |
 
-> The much higher "above cutoff" counts in Patrick vs Zymo are **expected** — Patrick is a diverse real microbiome with hundreds of genuine taxa, not a 10-organism mock.
 
 ---
 
-## 10. Key Findings
+## 9. Key Findings
 
 ### Biological Concordance Across Pipelines
 - **Core gut microbiome genera are consistently detected across all three pipelines**: *Bacteroides*, *Phocaeicola*, *Segatella/Prevotella*, *Faecalibacterium*, *Blautia*, *Roseburia*, *Bifidobacterium*
@@ -435,7 +405,7 @@ Key findings:
 
 ---
 
-## 11. Genus Tables Location
+## 10. Genus Tables Location
 
 All genus-level OTU tables are available at:
 
@@ -448,13 +418,3 @@ All genus-level OTU tables are available at:
 | `results/patrick/pipeline3/16S/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — shared by P2 |
 | `results/patrick/pipeline3/MGS/otu_table_genus.tsv` | Pipeline 3 | MGS (SortMeRNA+K2) |
 
----
-
-## 12. Next Steps
-
-- [ ] **Cross-pipeline genus-level comparison**: Map GTDB names (P1) to NCBI names (P2/P3) using the GG2 taxonomy TSV for a unified comparison table
-- [ ] **Alpha diversity analysis**: Compute Shannon index, Observed species, Chao1 per pipeline across 107 samples
-- [ ] **Beta diversity analysis**: PCoA/PERMANOVA per pipeline to assess sample clustering (BCH-F vs BCH-h)
-- [ ] **Host contamination removal**: Filter *Homo* reads from P2/P3 MGS for downstream analysis
-- [ ] **Differential abundance testing**: Compare BCH-F vs BCH-h groups per pipeline
-- [ ] **Integration with Zymo benchmark**: Use Zymo performance metrics (Section 9 of Zymo_Combine_Report.md) to guide interpretation of Patrick results
