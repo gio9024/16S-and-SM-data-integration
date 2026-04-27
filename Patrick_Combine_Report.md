@@ -12,10 +12,10 @@
 | Pipeline | 16S Side | MGS Side | Shared Database |
 |----------|----------|----------|-----------------|
 | **Pipeline 1** | DADA2 + Greengenes2 classifier | Bowtie2 + WoLr2 + Woltka (Greengenes2) | Greengenes2 (GTDB taxonomy) |
-| **Pipeline 2** | DADA2 + NCBI RefSeq 16S V4 NB classifier | Kraken2 + Bracken (full RefSeq standard DB) | NCBI taxonomy |
-| **Pipeline 3** | DADA2 + NCBI RefSeq 16S V4 NB classifier | SortMeRNA extraction → Kraken2 + Bracken (full RefSeq standard DB) | NCBI taxonomy |
+| **Pipeline 2** | DADA2 + NCBI RefSeq 16S full-length NB classifier | Kraken2 + Bracken (full RefSeq standard DB) | NCBI taxonomy |
+| **Pipeline 3** | DADA2 + NCBI RefSeq 16S full-length NB classifier | SortMeRNA extraction → Kraken2 + Bracken (full RefSeq standard DB) | NCBI taxonomy |
 
-> **Note:** Pipeline 2 and Pipeline 3 share the same 16S amplicon classification (NCBI RefSeq 16S V4 classifier), so their 16S-side results are identical. Pipeline 3 MGS differs from Pipeline 2 MGS in that only SortMeRNA-extracted 16S reads (not all raw reads) are classified.
+> **Note:** Pipeline 2 and Pipeline 3 share the same 16S amplicon classification (NCBI RefSeq 16S full-length classifier), so their 16S-side results are identical. Pipeline 3 MGS differs from Pipeline 2 MGS in that only SortMeRNA-extracted 16S reads (not all raw reads) are classified.
 
 ### Sample Information
 
@@ -37,13 +37,13 @@
 | **Pipeline 3** | 16S (RefSeq) | 107 | 289 (231 genus-level named) | 9,194,967 |
 | **Pipeline 3** | MGS (SortMeRNA+K2) | 107 | 2,286 | 49.1 million |
 
-> **Note:** Pipeline 2 and Pipeline 3 share the same 16S ASVs (from corrected V3-V4 DADA2 rerun with trunc-len-f=240, trunc-len-r=200). The 9,194,967 total reads are non-chimeric merged reads from 107 samples (81.8% merge rate).
+> **Note:** Pipeline 2 and Pipeline 3 share the same 16S ASVs. DADA2 was run with V3-V4 parameters (trunc-len-f=240, trunc-len-r=200, 81.8% merge rate). The 9,194,967 total reads are non-chimeric merged reads from 107 samples.
 
 ---
 
 ## 3. Pipeline 1 — Greengenes2 + Woltka
 
-### 16S (DADA2 + GG2) — V3-V4 Corrected Rerun
+### 16S (DADA2 + GG2)
 
 | Metric | Value |
 |--------|-------|
@@ -67,8 +67,7 @@
 | 5 | *Bifidobacterium_388775* | 248,974 |
 
 Key observations:
-- **V3-V4 rerun** corrected the previous 0.13% merge rate to 81.8% — recovering 9.19M non-chimeric reads (vs. 14,882 previously)
-- **GTDB taxonomy** produces renamed/suffixed genus identifiers (e.g., *Bacteroides_H_857956*, *Agathobacter_164119*)
+- **GTDB taxonomy** produces renamed/suffixed genus identifiers (e.g., *Bacteroides_H_857956*, *Agathobacter_164119*) — GG2 splits traditional genera into finer sub-genera based on genomic divergence, yielding more genus-level rows than NCBI-based classifiers
 - Dominant phyla: Bacteroidota and Bacillota_A (≈ Firmicutes) — consistent with human gut microbiome
 - 86 rows (~21%) are unresolved at genus level (`__`)
 
@@ -107,7 +106,7 @@ Key observations:
 
 ### 16S (DADA2 + NCBI RefSeq 16S Full-Length Classifier)
 
-*(Shared with Pipeline 3 — see Section 5, V3-V4 Corrected Rerun)*
+*(Shared with Pipeline 3 — see Section 5)*
 
 ### MGS (Kraken2 + Bracken + Full RefSeq Standard DB)
 
@@ -145,7 +144,7 @@ Key observations:
 
 ## 5. Pipeline 3 — SortMeRNA + Kraken2/Bracken (16S RefSeq)
 
-### 16S (DADA2 + NCBI RefSeq 16S Full-Length Classifier) — V3-V4 Corrected Rerun
+### 16S (DADA2 + NCBI RefSeq 16S Full-Length Classifier)
 
 | Metric | Value |
 |--------|-------|
@@ -238,7 +237,7 @@ Key observations:
 
 ---
 
-## 7. Pipeline 16S Side — Comparison (V3-V4 Corrected Rerun)
+## 7. Pipeline 16S Side — Comparison
 
 | Metric | P1 16S (GG2) | P3/P2 16S (NCBI RefSeq) |
 |--------|:---:|:---:|
@@ -254,9 +253,9 @@ Key observations:
 Key findings:
 - Both classifiers agree on the dominant genus (*Bacteroides_H_857956* ↔ *Bacteroides*) — top genus with ~2M reads each
 - *Prevotella* ranks in top 3 for both classifiers
-- P3's 289 genera closely matches the original paper's 291 genera (Guo et al. 2023)
-- Unresolved rate (~20–21%) is improved from the previous broken run (~27–28%), reflecting better read quality after V3-V4 truncation correction
-- DADA2 merge rate improved from 0.13% → 81.8% after fixing truncation parameters (F=240, R=200)
+- P3's 289 genera closely matches the original paper's 291 genera (Guo et al. 2023, SILVA classifier)
+- P1 detects more genera (417 vs 289) because GTDB splits traditional genera into sub-genera (e.g., *Alistipes* → *Alistipes_A_871400* + *Alistipes_A_871404*) — 52 GTDB-split genera account for the majority of the difference
+- Unresolved rate (~20–21%) is consistent between classifiers
 
 ---
 
@@ -264,17 +263,15 @@ Key findings:
 
 > **Context:** For Zymo (mock community), the 0.01% cutoff was used to count **false positives** — genera that exceeded noise level but weren't in the true community. For Patrick (real human gut), there is no ground truth, so the same cutoff instead measures **how many genera survive noise filtering** — a proxy for biologically meaningful detection.
 
-### 9.1 Cutoff-Based Detection Summary
+### 8.1 Cutoff-Based Detection Summary
 
 | Pipeline | Side | Total Genera | >0.01% (mean RA) | >0.01% (any sample) | >0.01% (≥10% samples) | >0.01% (>50% samples) |
 |----------|------|:---:|:---:|:---:|:---:|:---:|
-| **Pipeline 1** | 16S (GG2) | 417 | *TBD* | *TBD* | *TBD* | *TBD* |
+| **Pipeline 1** | 16S (GG2) | 417 | 144 | 345 | 135 | 52 |
 | **Pipeline 1** | MGS (Woltka) | 5,073 | 239 | 595 | 294 | 155 |
 | **Pipeline 2** | MGS (Kraken2) | 3,543 | 143 | 446 | 195 | 93 |
-| **Pipeline 3** | 16S (RefSeq) | 289 | *TBD* | *TBD* | *TBD* | *TBD* |
+| **Pipeline 3** | 16S (RefSeq) | 289 | 113 | 230 | 109 | 49 |
 | **Pipeline 3** | MGS (SortMeRNA+K2) | 2,286 | 171 | 771 | 243 | 111 |
-
-> **Note:** 16S cutoff analysis values marked *TBD* need to be recalculated with the corrected V3-V4 rerun data.
 
 > **Column definitions:**
 > - **>0.01% (mean RA)**: genera whose mean relative abundance across all 107 samples exceeds 0.01%
@@ -282,19 +279,17 @@ Key findings:
 > - **>0.01% (≥10% samples)**: genera exceeding 0.01% in ≥11 of 107 samples (robust detection)
 > - **>0.01% (>50% samples)**: genera exceeding 0.01% in majority of samples (core microbiome)
 
-### 9.2 Average Genera Per Sample Above 0.01% Cutoff
+### 8.2 Average Genera Per Sample Above 0.01% Cutoff
 
 | Pipeline | Side | Mean Genera/Sample | Median | Min | Max |
 |----------|------|-----------------:|:---:|:---:|:---:|
-| **Pipeline 1** | 16S (GG2) | 3.4 | 3 | 0 | 12 |
+| **Pipeline 1** | 16S (GG2) | 65.3 | 64 | 14 | 126 |
 | **Pipeline 1** | MGS (Woltka) | 168.6 | 175 | 54 | 255 |
 | **Pipeline 2** | MGS (Kraken2) | 110.7 | 104 | 20 | 262 |
-| **Pipeline 3** | 16S (RefSeq) | 2.9 | 2 | 0 | 8 |
+| **Pipeline 3** | 16S (RefSeq) | 57.4 | 59 | 14 | 93 |
 | **Pipeline 3** | MGS (SortMeRNA+K2) | 133.0 | 122 | 50 | 365 |
 
-> The low per-sample genus count on the 16S side (~3/sample) reflects the shallow depth and sparse nature of DADA2 classification across 107 samples at this cutoff.
-
-### 9.3 Top Genera Above 0.01% (Mean Relative Abundance)
+### 8.3 Top Genera Above 0.01% (Mean Relative Abundance)
 
 **Pipeline 1 — MGS (Woltka/GTDB), top 10 above cutoff:**
 
@@ -342,7 +337,7 @@ Key findings:
 | *Escherichia* | 1.76% | 101/107 | |
 | *Parabacteroides* | 1.70% | 105/107 | |
 
-### 9.4 Key Observations from 0.01% Cutoff Analysis
+### 8.4 Key Observations from 0.01% Cutoff Analysis
 
 **Noise filtering effect:**
 - **P1 MGS**: 5,073 total genera → 239 above mean 0.01% cutoff (~4.7% retained) — indicating ~95% of genera are ultra-low-abundance noise
@@ -353,7 +348,8 @@ Key findings:
 - **P1 MGS**: 155 genera present in majority of samples — richest core
 - **P3 MGS**: 111 genera in majority of samples
 - **P2 MGS**: 93 genera in majority of samples — most conservative core
-- **16S (both)**: only 1 genus present in majority of samples at 0.01% cutoff — reflects sparse per-sample depth
+- **P1 16S**: 52 genera in majority of samples
+- **P3 16S**: 49 genera in majority of samples
 
 **Host contamination (*Homo*) comparison:**
 
@@ -369,8 +365,10 @@ Key findings:
 
 | Context | Pipeline | Total genera | Above 0.01% (any sample) |
 |---------|----------|:---:|:---:|
+| Patrick (human, 107 samples) | P1 16S | 417 | 345 |
 | Patrick (human, 107 samples) | P1 MGS | 5,073 | 595 |
 | Patrick (human, 107 samples) | P2 MGS | 3,543 | 446 |
+| Patrick (human, 107 samples) | P3 16S | 289 | 230 |
 | Patrick (human, 107 samples) | P3 MGS | 2,286 | 771 |
 
 
@@ -379,9 +377,9 @@ Key findings:
 ## 9. Key Findings
 
 ### Biological Concordance Across Pipelines
-- **Core gut microbiome genera are consistently detected across all three pipelines**: *Bacteroides*, *Phocaeicola*, *Segatella/Prevotella*, *Faecalibacterium*, *Blautia*, *Roseburia*, *Bifidobacterium*
+- **Core gut microbiome genera are consistently detected across all three pipelines**: *Bacteroides*, *Prevotella*, *Faecalibacterium*, *Blautia*, *Roseburia*, *Bifidobacterium*
 - **Firmicutes and Bacteroidota dominate** all 16S and MGS outputs — consistent with a human pediatric gut microbiota
-- *Clostridium* (16S) and *Faecalibacterium* (MGS) prominently detected across all pipelines
+- 16S and MGS sides agree on the top genera, with *Bacteroides* ranking #1 across all pipelines
 
 ### Taxonomy and Cross-Pipeline Comparability
 - **Pipeline 1 (GTDB)** uses renamed/suffixed genus identifiers that require a GTDB→NCBI mapping step before direct comparison with P2/P3
@@ -416,12 +414,10 @@ All genus-level OTU tables are available at:
 
 | File | Pipeline | Side |
 |------|----------|------|
-| `results/patrick/pipeline1/16S_v34/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) — V3-V4 corrected |
-| `results/patrick/pipeline1/16S/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) — original (broken V4 truncation) |
+| `results/patrick/pipeline1/16S_v34/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) |
 | `results/patrick/pipeline1/MGS/otu_table_genus.tsv` | Pipeline 1 | MGS (Woltka) |
 | `results/patrick/pipeline1/MGS/otu_table_full.tsv` | Pipeline 1 | MGS (Woltka, species-level) |
 | `results/patrick/pipeline2/MGS/otu_table_genus.tsv` | Pipeline 2 | MGS (Kraken2/Bracken) |
-| `results/patrick/pipeline3/16S_v34/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — V3-V4 corrected, shared by P2 |
-| `results/patrick/pipeline3/16S/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — original (broken V4 truncation) |
+| `results/patrick/pipeline3/16S_v34/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — shared by P2 |
 | `results/patrick/pipeline3/MGS/otu_table_genus.tsv` | Pipeline 3 | MGS (SortMeRNA+K2) |
 
