@@ -1,0 +1,90 @@
+import glob
+import os
+
+##############################################################################
+#  Pipeline 3 — 16S side (Patrick SRA Data) — V3-V4 corrected
+#
+#  16S RefSeq classification of ASVs from the V3-V4 DADA2 rerun.
+#  Uses the full-length RefSeq 16S classifier (better for V3-V4 ASVs
+#  which span ~400bp, unlike the V4-region-specific classifier).
+#
+#  Prerequisites:
+#    - Pipeline 1 V3-V4 rerun complete:
+#        results/patrick/pipeline1/16S_v34_rerun/dada2_table.qza
+#        results/patrick/pipeline1/16S_v34_rerun/rep_seqs.qza
+#
+#  Usage:
+#    conda activate qiime2-amplicon-2024.5
+#    module load python
+#    snakemake -s pipeline3_patrick_v34_Snakefile --cores 8
+##############################################################################
+
+REFSEQ_16S_DIR     = "/DCEG/Projects/Microbiome/Combined_Study/RefSeq-16S"
+# Use full-length classifier for V3-V4 ASVs (~400bp) instead of V4-only
+REFSEQ_CLASSIFIER  = f"{REFSEQ_16S_DIR}/refseq16s_fullLength_nb.qza"
+
+P1_16S = "results/patrick/pipeline1/16S_v34"    # V3-V4 corrected DADA2 outputs
+P3_16S = "results/patrick/pipeline3/16S_v34"     # this pipeline's outputs
+
+
+rule all:
+    input:
+        f"{P3_16S}/refseq_taxonomy.qza",
+        f"{P3_16S}/table_genus.qza",
+        f"{P3_16S}/otu_table_genus.tsv"
+
+# ── Step 1: Classify ASVs against full-length 16S RefSeq NB classifier ──────
+rule refseq_classify:
+    input:
+        rep_seqs=f"{P1_16S}/rep_seqs.qza"
+    output:
+        f"{P3_16S}/refseq_taxonomy.qza"
+    shell:
+        """
+        mkdir -p {P3_16S}
+        qiime feature-classifier classify-sklearn \\
+            --i-classifier {REFSEQ_CLASSIFIER} \\
+            --i-reads {input.rep_seqs} \\
+            --o-classification {output} \\
+            --p-n-jobs 8
+        """
+
+# ── Step 2: Collapse to genus level (level 6) ────────────────────────────────
+rule collapse_genus:
+    input:
+        table=f"{P1_16S}/dada2_table.qza",
+        taxonomy=f"{P3_16S}/refseq_taxonomy.qza"
+    output:
+        f"{P3_16S}/table_genus.qza"
+    shell:
+        """
+        qiime taxa collapse \\
+            --i-table {input.table} \\
+            --i-taxonomy {input.taxonomy} \\
+            --p-level 6 \\
+            --o-collapsed-table {output}
+        """
+
+# ── Step 3: Export genus table to TSV ────────────────────────────────────────
+rule export_genus_tsv:
+    input:
+        f"{P3_16S}/table_genus.qza"
+    output:
+        f"{P3_16S}/otu_table_genus.tsv"
+    shell:
+        """
+        WORKDIR="{P3_16S}/export_genus"
+        mkdir -p "$WORKDIR"
+
+        qiime tools export \\
+            --input-path {input} \\
+            --output-path "$WORKDIR"
+
+        biom convert \\
+            -i "$WORKDIR/feature-table.biom" \\
+            -o {output} \\
+            --to-tsv
+
+        # Remove biom comment header line
+        tail -n +2 {output} > {output}.tmp && mv {output}.tmp {output}
+        """

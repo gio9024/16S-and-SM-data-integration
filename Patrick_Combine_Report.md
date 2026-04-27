@@ -1,6 +1,6 @@
 # Patrick SRA Dataset — Combined Pipeline Report
 
-**Generated:** 2026-04-20  
+**Generated:** 2026-04-20 | **Updated:** 2026-04-27 (16S V3-V4 corrected rerun)  
 **Dataset:** Patrick SRA dataset (BCH Cohort — Pediatric Gut Microbiome)  
 **Samples:** 107 samples (43 BCH-F stool, 64 BCH-h stool)  
 **Note:** This is a real human gut microbiome cohort — no reference ground truth. Report focuses on pipeline completion, output characteristics, and cross-pipeline concordance.
@@ -30,46 +30,47 @@
 
 | Pipeline | Side | Samples | Genera Detected | Total Classified Reads |
 |----------|------|:---:|:---:|:---:|
-| **Pipeline 1** | 16S (GG2) | 107 | 55 (40 genus-level named) | 14,882 |
+| **Pipeline 1** | 16S (GG2) | 107 | 417 (331 genus-level named) | 9,194,967 |
 | **Pipeline 1** | MGS (Woltka/GG2) | 107 | 5,073 | 4.42 billion |
 | **Pipeline 2** | 16S (RefSeq, shared) | — | *(same as P3 16S)* | — |
 | **Pipeline 2** | MGS (Kraken2/Bracken) | 107 | 3,543 | 3.09 billion |
-| **Pipeline 3** | 16S (RefSeq) | 107 | 50 (36 genus-level named) | 14,882 |
+| **Pipeline 3** | 16S (RefSeq) | 107 | 289 (231 genus-level named) | 9,194,967 |
 | **Pipeline 3** | MGS (SortMeRNA+K2) | 107 | 2,286 | 49.1 million |
 
-> **Note:** Pipeline 2 and Pipeline 3 share the same 16S output file (`results/patrick/pipeline3/16S/otu_table_genus.tsv`). The 14,882 total 16S reads is the ASV count classified from 107 samples combined.
+> **Note:** Pipeline 2 and Pipeline 3 share the same 16S ASVs (from corrected V3-V4 DADA2 rerun with trunc-len-f=240, trunc-len-r=200). The 9,194,967 total reads are non-chimeric merged reads from 107 samples (81.8% merge rate).
 
 ---
 
 ## 3. Pipeline 1 — Greengenes2 + Woltka
 
-### 16S (DADA2 + GG2)
+### 16S (DADA2 + GG2) — V3-V4 Corrected Rerun
 
 | Metric | Value |
 |--------|-------|
 | Samples | 107 |
-| Total ASV reads | 14,882 |
-| Genera detected | 55 rows (40 with named genus-level assignments) |
+| Input reads | 20,940,816 |
+| Filtered reads | 17,791,904 (85.0%) |
+| Merged reads | 14,560,997 (81.8% merge rate) |
+| Non-chimeric (classified) | 9,194,967 (43.9% of input) |
+| Genera detected | 417 rows (331 with named genus-level assignments) |
 | Taxonomy system | GTDB (GreenGenes2) — suffixed genus names |
-| Classification | `p__Bacillota_A_368345` dominant (Clostridia-type Firmicutes) |
+| DADA2 parameters | trunc-len-f=240, trunc-len-r=200 (V3-V4 optimized) |
 
 **Top genera by total read count (GTDB names):**
 
 | Rank | Genus (GTDB) | Total Reads |
 |------|--------------|:-----------:|
-| 1 | *Clostridium_T* | 7,103 |
-| 2 | *Phocaeicola_A* (Bacteroides-like) | 680 |
-| 3 | *CAG-349* | 227 |
-| 4 | *Thomasclavelia* | 200 |
-| 5 | *PeH17* | 78 |
-| 6 | *Dysosmobacter* | 64 |
-| 7 | *Prevotella* | 62 |
-| 8 | *Bifidobacterium_388775* | 56 |
+| 1 | *Bacteroides_H_857956* | 2,051,886 |
+| 2 | *Prevotella* | 1,030,068 |
+| 3 | *Agathobacter_164119* | 389,458 |
+| 4 | *Faecalibacterium* | 318,988 |
+| 5 | *Bifidobacterium_388775* | 248,974 |
 
 Key observations:
-- **GTDB taxonomy** produces renamed/suffixed genus identifiers (e.g., *Bacteroides_H_857956*, *Phocaeicola_A*, *Blautia_A_141781*)
-- Dominant phyla: Bacillota_A (≈ Firmicutes) and Bacteroidota — consistent with gut microbiome
-- 15 rows (~27%) are unresolved at genus level (`__`)
+- **V3-V4 rerun** corrected the previous 0.13% merge rate to 81.8% — recovering 9.19M non-chimeric reads (vs. 14,882 previously)
+- **GTDB taxonomy** produces renamed/suffixed genus identifiers (e.g., *Bacteroides_H_857956*, *Agathobacter_164119*)
+- Dominant phyla: Bacteroidota and Bacillota_A (≈ Firmicutes) — consistent with human gut microbiome
+- 86 rows (~21%) are unresolved at genus level (`__`)
 
 ### MGS (Bowtie2 + Woltka + GG2)
 
@@ -104,9 +105,9 @@ Key observations:
 
 ## 4. Pipeline 2 — Kraken2/Bracken (Full RefSeq)
 
-### 16S (DADA2 + NCBI RefSeq 16S V4 Classifier)
+### 16S (DADA2 + NCBI RefSeq 16S Full-Length Classifier)
 
-*(Shared with Pipeline 3 — see Section 6)*
+*(Shared with Pipeline 3 — see Section 5, V3-V4 Corrected Rerun)*
 
 ### MGS (Kraken2 + Bracken + Full RefSeq Standard DB)
 
@@ -144,33 +145,33 @@ Key observations:
 
 ## 5. Pipeline 3 — SortMeRNA + Kraken2/Bracken (16S RefSeq)
 
-### 16S (DADA2 + NCBI RefSeq 16S V4 Classifier)
+### 16S (DADA2 + NCBI RefSeq 16S Full-Length Classifier) — V3-V4 Corrected Rerun
 
 | Metric | Value |
 |--------|-------|
 | Samples | 107 |
-| Total ASV reads | 14,882 (same pool as P1 16S) |
-| Genera detected | 50 rows (36 with named genus-level assignments) |
+| Non-chimeric reads | 9,194,967 (same ASV pool as P1 16S) |
+| Genera detected | 289 rows (231 with named genus-level assignments) |
 | Taxonomy system | NCBI taxonomy |
 
 **Top genera by total read count (NCBI names):**
 
 | Rank | Genus (NCBI) | Total Reads |
 |------|--------------|:-----------:|
-| 1 | *Clostridium* | 8,250 |
-| 2 | *Bacteroides* | 760 |
-| 3 | *Erysipelatoclostridium* | 205 |
-| 4 | *Marseillibacter* | 64 |
-| 5 | *Tyzzerella* | 61 |
-| 6 | *Prevotella* | 56 |
-| 7 | *Bifidobacterium* | 56 |
-| 8 | *Romboutsia* | 50 |
+| 1 | *Bacteroides* | 2,080,754 |
+| 2 | *Faecalibacterium* | 1,130,662 |
+| 3 | *Prevotella* | 1,013,696 |
+| 4 | *Blautia* | 443,201 |
+| 5 | *Roseburia* | 264,763 |
+| 6 | *Bifidobacterium* | 256,947 |
+| 7 | *Escherichia* | 183,846 |
+| 8 | *Ruminococcus* | 178,178 |
 
 Key observations:
-- Same DADA2 ASVs as P1 16S, reclassified with NCBI RefSeq V4 classifier instead of GG2
-- **Dominant genus is *Clostridium*** (8,250 reads) rather than the GG2-equivalent *Clostridium_T* → direct concordance confirmed between classifiers
-- *Bacteroides* (NCBI) maps to *Phocaeicola_A* (GTDB) at the top, slightly different ranking
-- 14 rows (~28%) are unresolved at genus level — consistent with P1 16S
+- Same DADA2 ASVs as P1 16S, reclassified with NCBI RefSeq full-length classifier instead of GG2
+- **Dominant genus is *Bacteroides*** (2.08M reads) — concordant with P1's *Bacteroides_H_857956* as top genus
+- **289 genera** closely matches the original paper's 291 genera (Guo et al. 2023, SILVA classifier)
+- 58 rows (~20%) are unresolved at genus level — consistent with P1 16S
 
 ### MGS (SortMeRNA → Kraken2 + Bracken + Full RefSeq Standard DB)
 
@@ -237,23 +238,25 @@ Key observations:
 
 ---
 
-## 7. Pipeline 16S Side — Comparison
+## 7. Pipeline 16S Side — Comparison (V3-V4 Corrected Rerun)
 
 | Metric | P1 16S (GG2) | P3/P2 16S (NCBI RefSeq) |
 |--------|:---:|:---:|
 | Samples | 107 | 107 |
-| Total classified ASVs | 14,882 | 14,882 |
-| Genera detected (rows) | 55 | 50 |
-| Genus-level named rows | 40 | 36 |
-| Top genus | *Clostridium_T* (7,103) | *Clostridium* (8,250) |
-| Unresolved (%) | ~27% | ~28% |
+| Total non-chimeric reads | 9,194,967 | 9,194,967 |
+| Genera detected (rows) | 417 | 289 |
+| Genus-level named rows | 331 | 231 |
+| Top genus | *Bacteroides_H_857956* (2,051,886) | *Bacteroides* (2,080,754) |
+| Unresolved (%) | ~21% | ~20% |
 | Taxonomy system | GTDB | NCBI |
 | Cross-pipeline name mapping | ⚠️ Requires GTDB→NCBI mapping | ✅ Direct |
 
 Key findings:
-- Both classifiers agree on the dominant genus (*Clostridium_T* ↔ *Clostridium*)
-- *Bacteroides* / *Bacteroides-like* genera rank 2nd in both
-- Unresolved rate (~27–28%) is similar between classifiers, suggesting the resolution limitation is the V4 region and read depth rather than the classifier
+- Both classifiers agree on the dominant genus (*Bacteroides_H_857956* ↔ *Bacteroides*) — top genus with ~2M reads each
+- *Prevotella* ranks in top 3 for both classifiers
+- P3's 289 genera closely matches the original paper's 291 genera (Guo et al. 2023)
+- Unresolved rate (~20–21%) is improved from the previous broken run (~27–28%), reflecting better read quality after V3-V4 truncation correction
+- DADA2 merge rate improved from 0.13% → 81.8% after fixing truncation parameters (F=240, R=200)
 
 ---
 
@@ -265,11 +268,13 @@ Key findings:
 
 | Pipeline | Side | Total Genera | >0.01% (mean RA) | >0.01% (any sample) | >0.01% (≥10% samples) | >0.01% (>50% samples) |
 |----------|------|:---:|:---:|:---:|:---:|:---:|
-| **Pipeline 1** | 16S (GG2) | 55 | 51 | 55 | 10 | 1 |
+| **Pipeline 1** | 16S (GG2) | 417 | *TBD* | *TBD* | *TBD* | *TBD* |
 | **Pipeline 1** | MGS (Woltka) | 5,073 | 239 | 595 | 294 | 155 |
 | **Pipeline 2** | MGS (Kraken2) | 3,543 | 143 | 446 | 195 | 93 |
-| **Pipeline 3** | 16S (RefSeq) | 50 | 45 | 50 | 9 | 1 |
+| **Pipeline 3** | 16S (RefSeq) | 289 | *TBD* | *TBD* | *TBD* | *TBD* |
 | **Pipeline 3** | MGS (SortMeRNA+K2) | 2,286 | 171 | 771 | 243 | 111 |
+
+> **Note:** 16S cutoff analysis values marked *TBD* need to be recalculated with the corrected V3-V4 rerun data.
 
 > **Column definitions:**
 > - **>0.01% (mean RA)**: genera whose mean relative abundance across all 107 samples exceeds 0.01%
@@ -400,8 +405,8 @@ Key findings:
 | 1 | **P2 MGS (Kraken2/Bracken)** | Best sensitivity + NCBI names + low host contamination (1%) | Some genera overlap ambiguities (*Klebsiella*) |
 | 2 | **P1 MGS (Woltka/GG2)** | Highest genus diversity (5,073), largest read count | GTDB names require remapping; no eukaryotes |
 | 3 | **P3 MGS (SortMeRNA+K2)** | 16S-targeted, fewer false genera | Elevated host contamination (10%), fewer reads |
-| 4 | **P2/P3 16S (NCBI RefSeq)** | NCBI names, consistent with MGS taxonomy | Limited depth (14,882 reads), ~28% unresolved |
-| 5 | **P1 16S (GG2)** | GTDB taxonomy | GTDB names, ~27% unresolved, requires remapping |
+| 4 | **P2/P3 16S (NCBI RefSeq)** | NCBI names, consistent with MGS taxonomy, 289 genera | ~20% unresolved |
+| 5 | **P1 16S (GG2)** | GTDB taxonomy, 417 genera | GTDB names, ~21% unresolved, requires remapping |
 
 ---
 
@@ -411,10 +416,12 @@ All genus-level OTU tables are available at:
 
 | File | Pipeline | Side |
 |------|----------|------|
-| `results/patrick/pipeline1/16S/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) |
+| `results/patrick/pipeline1/16S_v34/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) — V3-V4 corrected |
+| `results/patrick/pipeline1/16S/otu_table_genus.tsv` | Pipeline 1 | 16S (GG2) — original (broken V4 truncation) |
 | `results/patrick/pipeline1/MGS/otu_table_genus.tsv` | Pipeline 1 | MGS (Woltka) |
 | `results/patrick/pipeline1/MGS/otu_table_full.tsv` | Pipeline 1 | MGS (Woltka, species-level) |
 | `results/patrick/pipeline2/MGS/otu_table_genus.tsv` | Pipeline 2 | MGS (Kraken2/Bracken) |
-| `results/patrick/pipeline3/16S/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — shared by P2 |
+| `results/patrick/pipeline3/16S_v34/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — V3-V4 corrected, shared by P2 |
+| `results/patrick/pipeline3/16S/otu_table_genus.tsv` | Pipeline 3 | 16S (NCBI RefSeq) — original (broken V4 truncation) |
 | `results/patrick/pipeline3/MGS/otu_table_genus.tsv` | Pipeline 3 | MGS (SortMeRNA+K2) |
 

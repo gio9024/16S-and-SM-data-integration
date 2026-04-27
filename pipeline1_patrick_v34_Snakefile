@@ -1,0 +1,151 @@
+import glob
+import os
+import csv
+
+##############################################################################
+#  Pipeline 1 — 16S side (Patrick SRA Data) — V3-V4 corrected
+#
+#  Re-run of Patrick 16S with corrected DADA2 truncation parameters.
+#  The original run used --p-trunc-len 150/150 (tuned for V4 ~292bp),
+#  but Patrick data uses V3-V4 primers (341F/805R, ~460bp amplicon).
+#  With 250bp PE reads, truncation at 150 leaves a ~160bp gap and
+#  a catastrophic 0.13% merge rate.
+#
+#  Fix: increase truncation to 240/200 so reads overlap by ~40bp
+#  across the ~460bp V3-V4 amplicon:
+#    Forward 240 + Reverse 200 = 440bp coverage
+#    Expected overlap: 440 - 460 ≈ -20bp (tight, but DADA2 overlap
+#    requirement is 12bp min_overlap default — with primer-trimmed
+#    amplicon ~430bp, overlap ≈ 10bp should work)
+#
+#  Actually with primers already removed during demux, the insert
+#  is ~420bp, so 240+200=440 gives ~20bp overlap. ✓
+#
+#  Quality check (position → mean Q):
+#    Forward: pos200=Q29.3, pos220=Q28.1, pos240=Q27.0 → trunc at 240 OK
+#    Reverse: pos200=Q33.4, pos220=Q33.2, pos240=Q30.4 → trunc at 200 conservative
+#
+#  Usage:
+#    conda activate qiime2-amplicon-2024.5
+#    module load python
+#    snakemake -s pipeline1_patrick_v34_Snakefile --cores 8
+##############################################################################
+
+DATA_DIR = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/DataSets/Patrick_SRA_Data/16S_RAW"
+MAPPING_CSV = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/DataSets/Patrick_SRA_Data/16S_WGS_sample_name_mappings.csv"
+GG2_DATABASE = "/DCEG/Projects/Microbiome/Metagenomics/Combined_Study/16S/2024.09.backbone.v4.nb.qza"
+OUT_BASE = "results/patrick/pipeline1/16S_v34"
+
+# Reuse existing demux.qza from the original run (same raw reads, saves ~10min)
+EXISTING_DEMUX = "results/patrick/pipeline1/16S/demux.qza"
+
+# ---------- DADA2 parameters for V3-V4 (341F/805R) ----------
+# Primers are still in the reads (26% F, 64% R contain primer at start).
+# 341F primer = 17bp, 805R primer = 21bp.
+# With primers, effective insert ~466bp > 440bp coverage at trunc 240/200.
+# FIX: trim primers + use full read length (no truncation).
+#   Effective: (250-17) + (250-21) = 233 + 229 = 462bp
+#   Insert: ~428bp → overlap ~34bp ✓
+TRIM_LEFT_F = 17    # Remove 341F primer (17bp)
+TRIM_LEFT_R = 21    # Remove 805R primer (21bp)
+TRUNC_LEN_F = 0     # No truncation (use full 250bp reads after primer trim)
+TRUNC_LEN_R = 0     # No truncation
+# -----------------------------------------------------------------
+
+# Build mapping: BCH_sample -> 16S_SRR
+sample_map = {}  # {BCH_name: SRR_16S}
+with open(MAPPING_CSV) as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(',')
+        if len(parts) >= 3:
+            wgs_srr, s16_srr, bch_name = parts[0].strip(), parts[1].strip(), parts[2].strip()
+            # Only include if the 16S file actually exists
+            fq1 = os.path.join(DATA_DIR, f"{s16_srr}_1.fastq.gz")
+            if os.path.exists(fq1):
+                sample_map[bch_name] = s16_srr
+
+SAMPLES = list(sample_map.keys())
+
+
+rule all:
+    input:
+        f"{OUT_BASE}/dada2_table.qza",
+        f"{OUT_BASE}/gg2_taxonomy.qza",
+        f"{OUT_BASE}/otu_table_genus.tsv"
+
+rule qiime_dada2:
+    input:
+        EXISTING_DEMUX
+    output:
+        table=f"{OUT_BASE}/dada2_table.qza",
+        rep_seqs=f"{OUT_BASE}/rep_seqs.qza",
+        stats=f"{OUT_BASE}/dada2_stats.qza"
+    shell:
+        """
+        mkdir -p {OUT_BASE}
+        qiime dada2 denoise-paired \\
+            --i-demultiplexed-seqs {input} \\
+            --p-trim-left-f {TRIM_LEFT_F} \\
+            --p-trim-left-r {TRIM_LEFT_R} \\
+            --p-trunc-len-f {TRUNC_LEN_F} \\
+            --p-trunc-len-r {TRUNC_LEN_R} \\
+            --o-table {output.table} \\
+            --o-representative-sequences {output.rep_seqs} \\
+            --o-denoising-stats {output.stats} \\
+            --p-n-threads 8
+        """
+
+rule gg2_classify:
+    input:
+        rep_seqs=f"{OUT_BASE}/rep_seqs.qza"
+    output:
+        f"{OUT_BASE}/gg2_taxonomy.qza"
+    shell:
+        """
+        qiime feature-classifier classify-sklearn \\
+            --i-classifier {GG2_DATABASE} \\
+            --i-reads {input.rep_seqs} \\
+            --o-classification {output} \\
+            --p-n-jobs 8
+        """
+
+rule collapse_genus:
+    input:
+        table=f"{OUT_BASE}/dada2_table.qza",
+        taxonomy=f"{OUT_BASE}/gg2_taxonomy.qza"
+    output:
+        f"{OUT_BASE}/table_genus.qza"
+    shell:
+        """
+        qiime taxa collapse \\
+            --i-table {input.table} \\
+            --i-taxonomy {input.taxonomy} \\
+            --p-level 6 \\
+            --o-collapsed-table {output}
+        """
+
+rule export_genus_tsv:
+    input:
+        f"{OUT_BASE}/table_genus.qza"
+    output:
+        f"{OUT_BASE}/otu_table_genus.tsv"
+    shell:
+        """
+        WORKDIR="{OUT_BASE}/export_genus"
+        mkdir -p "$WORKDIR"
+
+        qiime tools export \\
+            --input-path {input} \\
+            --output-path "$WORKDIR"
+
+        biom convert \\
+            -i "$WORKDIR/feature-table.biom" \\
+            -o {output} \\
+            --to-tsv
+
+        # Remove biom comment header line
+        tail -n +2 {output} > {output}.tmp && mv {output}.tmp {output}
+        """
